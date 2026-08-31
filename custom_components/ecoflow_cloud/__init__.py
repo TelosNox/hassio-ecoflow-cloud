@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from typing import Any, Final
 
 import aiohttp
@@ -72,6 +73,13 @@ DEFAULT_ASSUME_OFFLINE_SEC: Final = 300  # 5 minutes
 DEFAULT_RESET_SENSORS_ON_OFFLINE: Final = True
 
 _STATUS_COORDINATOR_KEY = "__status_coordinator"
+
+_SENSITIVE_KEYS: Final = frozenset({CONF_ACCESS_KEY, CONF_SECRET_KEY, CONF_USERNAME, CONF_PASSWORD})
+
+
+def _redact(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a copy of a config entry mapping with credentials masked."""
+    return {k: "**REDACTED**" if k in _SENSITIVE_KEYS else v for k, v in data.items()}
 
 
 def _migrate_entity_unique_id(
@@ -242,7 +250,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if entry.version != CONFIG_VERSION:
         return False
 
-    _LOGGER.info("Setup entry %s (data = %s)", str(entry), str(entry.data))
+    _LOGGER.info("Setup entry %s (data = %s)", str(entry), _redact(entry.data))
     api_client: EcoflowApiClient
     if ECOFLOW_DOMAIN not in hass.data:
         hass.data[ECOFLOW_DOMAIN] = {}

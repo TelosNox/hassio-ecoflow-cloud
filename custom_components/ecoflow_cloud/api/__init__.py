@@ -102,7 +102,10 @@ class EcoflowApiClient(ABC):
         self.devices.pop(device.device_data.sn, None)
 
     def _accept_mqqt_certification(self, resp_json: dict):
-        _LOGGER.info(f"Received MQTT credentials: {resp_json}")
+        # Never log the raw response -- it carries certificatePassword, which
+        # grants MQTT access to the account. Users routinely attach debug logs
+        # to bug reports, so this ran at INFO straight into public issues.
+        _LOGGER.info("Received MQTT credentials")
         try:
             mqtt_url = resp_json["data"]["url"]
             mqtt_port = int(resp_json["data"]["port"])
