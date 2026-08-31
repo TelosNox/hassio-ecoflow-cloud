@@ -46,6 +46,7 @@ class EcoflowApiClient(ABC):
         self.mqtt_client: EcoflowMQTTClient
         self._mqtt_reconnect_last_attempt = 0.0
         self._mqtt_reconnect_count = 0
+        self._mqtt_reconnect_streak = 0
         # set by the integration, the only layer that can reach hass and the config entry
         self.on_auth_failure: Callable[[], None] | None = None
 
@@ -158,16 +159,34 @@ class EcoflowApiClient(ABC):
         self.mqtt_client = EcoflowMQTTClient(self.mqtt_info, self.devices)
         self.mqtt_client.on_auth_failure = self.on_auth_failure
 
-    def schedule_mqtt_reconnect(self, cooldown_sec: int = 60) -> int | None:
+    def schedule_mqtt_reconnect(self, data_stale: bool = False, cooldown_sec: int = 300) -> int | None:
+        """Return the new reconnect count if a reconnect should run, else None.
+
+        ``data_stale`` is needed because a dead socket is not the common failure
+        mode: EcoFlow's cloud stops telling a device to report once the MQTT
+        session last registered for it goes away (typically after the mobile
+        app is opened and closed). Our own session stays connected and
+        subscribed and simply receives nothing, so is_connected() never
+        notices.
+        """
         # reconnecting with rejected credentials only repeats the rejection
-        if self.mqtt_client.is_connected() or self.mqtt_client.auth_failed:
+        if self.mqtt_client.auth_failed:
             return None
 
+        if not data_stale and self.mqtt_client.is_connected():
+            self._mqtt_reconnect_streak = 0
+            return None
+
+        # Backoff so a genuinely offline device is not hammered with a
+        # reconnect every cooldown period.
+        backoff = cooldown_sec * (2 ** min(self._mqtt_reconnect_streak, 4))
+
         now = time.monotonic()
-        if now - self._mqtt_reconnect_last_attempt < cooldown_sec:
+        if now - self._mqtt_reconnect_last_attempt < backoff:
             return None
 
         self._mqtt_reconnect_last_attempt = now
+        self._mqtt_reconnect_streak += 1
         self._mqtt_reconnect_count += 1
         return self._mqtt_reconnect_count
 

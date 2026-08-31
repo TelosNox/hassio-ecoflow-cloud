@@ -450,4 +450,7 @@ class StreamAC(BaseDevice):
         return res
 
     def _status_sensor(self, client: EcoflowApiClient) -> StatusSensorEntity:
-        return StatusSensorEntity(client, self)
+        # A healthy STREAM reports several times per minute, so 90s of silence
+        # is unambiguous; the 300s assume_offline_sec default would keep the
+        # entities frozen for five minutes after every app contact.
+        return StatusSensorEntity(client, self, stall_sec=90)

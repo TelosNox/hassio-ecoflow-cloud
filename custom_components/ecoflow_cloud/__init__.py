@@ -65,12 +65,15 @@ OPTS_DIAGNOSTIC_MODE: Final = "diagnostic_mode"
 OPTS_POWER_STEP: Final = "power_step"
 OPTS_REFRESH_PERIOD_SEC: Final = "refresh_period_sec"
 OPTS_ASSUME_OFFLINE_SEC: Final = "assume_offline_sec"
+OPTS_STALL_SEC: Final = "stall_sec"
 OPTS_VERBOSE_STATUS_MODE: Final = "verbose_status_mode"
 OPTS_RESET_SENSORS_ON_OFFLINE: Final = "reset_sensors_on_offline"
 
 DEFAULT_REFRESH_PERIOD_SEC: Final = 5
 DEFAULT_ASSUME_OFFLINE_SEC: Final = 300  # 5 minutes
 DEFAULT_RESET_SENSORS_ON_OFFLINE: Final = True
+# 0 = automatic: the device class picks its own threshold, else assume_offline_sec
+DEFAULT_STALL_SEC: Final = 0
 
 _STATUS_COORDINATOR_KEY = "__status_coordinator"
 
@@ -234,6 +237,9 @@ def extract_devices(entry: ConfigEntry) -> dict[str, DeviceData]:
                 entry.options[CONF_DEVICE_LIST][sn][OPTS_VERBOSE_STATUS_MODE],
                 entry.options[CONF_DEVICE_LIST][sn][OPTS_ASSUME_OFFLINE_SEC],
                 entry.options[CONF_DEVICE_LIST][sn][OPTS_RESET_SENSORS_ON_OFFLINE],
+                # .get(): optional with a sensible default, so no config
+                # migration is needed for entries created before it existed
+                entry.options[CONF_DEVICE_LIST][sn].get(OPTS_STALL_SEC, DEFAULT_STALL_SEC),
             ),
             None,
             None,
