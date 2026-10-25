@@ -130,12 +130,16 @@ class BatteryBackupLevel(MinMaxLevelEntity):
         self._min_key = min_key
         self._max_key = max_key
         self._gap_min = gap_min
+        # The static range is the device's own bound; the charge and discharge
+        # limits may only narrow it, never widen it.
+        self._static_min = min_value
+        self._static_max = max_value
 
     def _updated(self, data: dict[str, Any]):
         if self._min_key in data:
-            self._attr_native_min_value = int(data[self._min_key]) + self._gap_min  # min + 5%
+            self._attr_native_min_value = max(self._static_min, int(data[self._min_key]) + self._gap_min)
         if self._max_key in data:
-            self._attr_native_max_value = int(data[self._max_key])
+            self._attr_native_max_value = min(self._static_max, int(data[self._max_key]))
         super()._updated(data)
 
 
