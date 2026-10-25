@@ -18,6 +18,7 @@
 - AC Out Volts (`plug_in_info_ac_out_vol`)
 - DC Out Power (`pow_get_12v`)
 - Type-C (1) Out Power (`pow_get_typec1`)
+- Type-C (2) Out Power (`pow_get_typec2`)
 - USB QC (1) Out Power (`pow_get_qcusb1`)
 - USB QC (2) Out Power (`pow_get_qcusb2`)
 - Charge Remaining Time (`bms_chg_rem_time`)

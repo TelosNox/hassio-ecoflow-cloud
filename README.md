@@ -1,19 +1,29 @@
 # EcoFlow Cloud Integration for Home Assistant
-[![GitHub release](https://img.shields.io/github/release/tolwi/hassio-ecoflow-cloud?include_prereleases=&sort=semver&color=blue)](https://github.com/tolwi/hassio-ecoflow-cloud/releases/)
-[![issues - hassio-ecoflow-cloud](https://img.shields.io/github/issues/tolwi/hassio-ecoflow-cloud)](https://github.com/tolwi/hassio-ecoflow-cloud/issues)
-[![GH-code-size](https://img.shields.io/github/languages/code-size/tolwi/hassio-ecoflow-cloud?color=red)](https://github.com/tolwi/hassio-ecoflow-cloud)
-[![GH-last-commit](https://img.shields.io/github/last-commit/tolwi/hassio-ecoflow-cloud?style=flat-square)](https://github.com/tolwi/hassio-ecoflow-cloud/commits/main)
+[![GitHub release](https://img.shields.io/github/release/TelosNox/hassio-ecoflow-cloud?include_prereleases=&sort=semver&color=blue)](https://github.com/TelosNox/hassio-ecoflow-cloud/releases/)
+[![issues - hassio-ecoflow-cloud](https://img.shields.io/github/issues/TelosNox/hassio-ecoflow-cloud)](https://github.com/TelosNox/hassio-ecoflow-cloud/issues)
+[![GH-code-size](https://img.shields.io/github/languages/code-size/TelosNox/hassio-ecoflow-cloud?color=red)](https://github.com/TelosNox/hassio-ecoflow-cloud)
+[![GH-last-commit](https://img.shields.io/github/last-commit/TelosNox/hassio-ecoflow-cloud?style=flat-square)](https://github.com/TelosNox/hassio-ecoflow-cloud/commits/main)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![HACS validation](https://github.com/tolwi/hassio-ecoflow-cloud/workflows/Validate%20with%20hassfest%20and%20HACS/badge.svg)](https://github.com/tolwi/hassio-ecoflow-cloud/actions?query=workflow:"Validate%20with%20hassfest%20and%20HACS")
+[![Tests](https://github.com/TelosNox/hassio-ecoflow-cloud/actions/workflows/tests.yaml/badge.svg)](https://github.com/TelosNox/hassio-ecoflow-cloud/actions/workflows/tests.yaml)
+[![HACS validation](https://github.com/TelosNox/hassio-ecoflow-cloud/actions/workflows/validate.yml/badge.svg)](https://github.com/TelosNox/hassio-ecoflow-cloud/actions/workflows/validate.yml)
 
 Inspired by [hassio-ecoflow](https://github.com/vwt12eh8/hassio-ecoflow) and [ecoflow-mqtt-prometheus-exporter](https://github.com/berezhinskiy/ecoflow-mqtt-prometheus-exporter) this integration uses EcoFlow MQTT Broker `mqtt.ecoflow.com` to monitor and control the device.
+
+## About this fork
+
+This is a maintained fork of [tolwi/hassio-ecoflow-cloud](https://github.com/tolwi/hassio-ecoflow-cloud). It collects fixes and device support that are waiting upstream, for example STREAM telemetry stalls, STREAM system commands, set-command replies, Smart Meter values and STREAM 5000 support. What changed in each version is in the [release notes](https://github.com/TelosNox/hassio-ecoflow-cloud/releases).
+
+- **Drop-in replacement:** the domain stays `ecoflow_cloud` and every entity keeps its unique_id, so switching from upstream keeps your entities, automations and history. Remove the upstream repository from HACS, add this one, install and restart. Your config entries stay as they are.
+- **Requires Home Assistant 2025.11 or newer.**
+- **Experimental:** STREAM 5000 / STREAM AC 5000 (only with `private_api`). Known issue: [#6](https://github.com/TelosNox/hassio-ecoflow-cloud/issues/6).
+- Please report problems with this version [here](https://github.com/TelosNox/hassio-ecoflow-cloud/issues), not upstream. Include the API mode, device model and a diagnostic download.
 
 ## Installation
 
 ### HACS installation
 The quickest way to install this integration is via [HACS](https://github.com/hacs/integration) by clicking the button below:
 
-[![Add to HACS via My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tolwi&repository=hassio-ecoflow-cloud&category=Integration)
+[![Add to HACS via My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TelosNox&repository=hassio-ecoflow-cloud&category=Integration)
 
 1. Click above to install as a custom repository via HACS
 2. Restart Home Assistant
@@ -25,7 +35,7 @@ EcoFlow strictly separates accounts by region. If you encounter the error `Accou
 - **Europe:** `api-e.ecoflow.com`
 
 ### Manual installation options
-- Install as a [custom repository](https://github.com/tolwi/hassio-ecoflow-cloud) via [HACS](https://github.com/hacs/integration)
+- Install as a [custom repository](https://github.com/TelosNox/hassio-ecoflow-cloud) via [HACS](https://github.com/hacs/integration)
 - Manually download and extract to the custom_components directory
 
 Restart Home Assistant. Once restart is done, use `Add Integration` → `EcoflowCloud`.
@@ -176,7 +186,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> DELTA_3 <i>(sensors: 32, switches: 8, sliders: 5, selects: 7)</i> </summary>
+<details><summary> DELTA_3 <i>(sensors: 33, switches: 8, sliders: 5, selects: 7)</i> </summary>
 <p>
 
 *Sensors*
@@ -197,6 +207,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - AC Out Volts
 - DC Out Power
 - Type-C (1) Out Power
+- Type-C (2) Out Power
 - USB QC (1) Out Power
 - USB QC (2) Out Power
 - Charge Remaining Time
@@ -316,7 +327,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> DELTA_3_MAX_PLUS <i>(sensors: 32, switches: 8, sliders: 5, selects: 7)</i> </summary>
+<details><summary> DELTA_3_MAX_PLUS <i>(sensors: 33, switches: 8, sliders: 5, selects: 7)</i> </summary>
 <p>
 
 *Sensors*
@@ -337,6 +348,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - AC Out Volts
 - DC Out Power
 - Type-C (1) Out Power
+- Type-C (2) Out Power
 - USB QC (1) Out Power
 - USB QC (2) Out Power
 - Charge Remaining Time
@@ -1476,7 +1488,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> DELTA_2_MAX <i>(sensors: 80, switches: 7, sliders: 6, selects: 3)</i> </summary>
+<details><summary> DELTA_2_MAX <i>(sensors: 80, switches: 7, sliders: 6, selects: 4)</i> </summary>
 <p>
 
 *Sensors*
@@ -1582,6 +1594,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Screen Timeout
 - Unit Timeout
 - AC Timeout
+- DC (12V) Timeout
 
 </p></details>
 
@@ -1921,7 +1934,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> STREAM_AC <i>(sensors: 42)</i> </summary>
+<details><summary> STREAM_AC <i>(sensors: 43)</i> </summary>
 <p>
 
 *Sensors*
@@ -1967,108 +1980,121 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Power AC SYS  _(disabled)_
 - Battery Temperature  _(disabled)_
 - Battery Volts  _(disabled)_
+- Status
 
 </p></details>
 
-<details><summary> STREAM_PRO <i>(sensors: 42)</i> </summary>
+<details><summary> STREAM_AC_5000 <i>(sensors: 31, binary_sensors: 1, switches: 3, sliders: 4, selects: 1)</i> </summary>
 <p>
 
 *Sensors*
-- Cumulative Capacity Charge (mAh)  _(disabled)_
-- Cumulative Energy Charge (Wh)  _(disabled)_
-- Cumulative Capacity Discharge (mAh)  _(disabled)_
-- Cumulative Energy Discharge (Wh)  _(disabled)_
+- Battery Level
+- Battery Level (Precise)  _(disabled)_
+- Battery Level (BMS)  _(disabled)_
+- Battery Level (pack)  _(disabled)_
+- Stored Energy
+- Remaining Time
 - Charge Remaining Time  _(disabled)_
-- Discharge Remaining Time
-- System Stored Energy  _(auto)_
+- Discharge Remaining Time  _(disabled)_
+- Battery Net Power
+- AC Grid Connection Power
+- Battery Power
+- Charge Power Limit  _(disabled)_
+- Max Discharge Power  _(disabled)_
+- Feed-in Power Max  _(disabled)_
+- Power Grid Global
+- Power Grid L1
+- Power Grid L2
+- Power Grid L3
+- Power Grid (L1) Volts  _(disabled)_
+- Power Grid (L2) Volts  _(disabled)_
+- Power Grid (L3) Volts  _(disabled)_
+- Power Grid Frequency  _(disabled)_
+- Min Cell Volts  _(disabled)_
+- Max Cell Volts  _(disabled)_
+- Real State of Health  _(disabled)_
+- State of Health  _(disabled)_
+- Cumulative Capacity Charge (mAh)  _(disabled)_
+- Cumulative Capacity Discharge (mAh)  _(disabled)_
+- Cumulative Energy Charge (Wh)
+- Cumulative Energy Discharge (Wh)
+- Status
+
+*Binary sensors*
+- P1 Meter Link
+
+*Switches*
+- AC Output
+- X-Boost
+- UPS Mode
+
+*Sliders (numbers)*
 - Max Charge Level
 - Min Discharge Level
-- Cycles  _(disabled)_
-- Design Capacity  _(disabled)_
-- Battery Level (Precise)
-- Full Capacity  _(disabled)_
-- Power AC
-- Power Volts  _(disabled)_
-- In Power  _(disabled)_
-- Max Cell Temperature  _(disabled)_
-- Max Cell Volts  _(disabled)_
-- Min Cell Temperature  _(disabled)_
-- Min Cell Volts  _(disabled)_
-- Out Power  _(disabled)_
-- System Battery Power
-- Power PV 1  _(auto)_
-- Power PV 2  _(auto)_
-- Power PV 3  _(auto)_
-- Power PV 4  _(auto)_
-- Power PV Sum
-- Power SCHUKO1  _(auto)_
-- Power SCHUKO2  _(auto)_
-- Power Grid
-- Power Sys Load
-- Power Sys Load From Battery
-- Power Sys Load From Grid
-- Power Sys Load From PV
-- Real State of Health  _(disabled)_
-- Remain Capacity  _(disabled)_
-- Remaining Time  _(disabled)_
-- Battery Level
-- State of Health  _(disabled)_
-- Power AC SYS  _(disabled)_
-- Battery Temperature  _(disabled)_
-- Battery Volts  _(disabled)_
+- Net Power Out Limit
+- Net Power In Limit
+
+*Selects*
+- Work Mode
 
 </p></details>
 
-<details><summary> STREAM_ULTRA <i>(sensors: 42)</i> </summary>
+<details><summary> STREAM_5000 <i>(sensors: 31, binary_sensors: 1, switches: 3, sliders: 4, selects: 1)</i> </summary>
 <p>
 
 *Sensors*
-- Cumulative Capacity Charge (mAh)  _(disabled)_
-- Cumulative Energy Charge (Wh)  _(disabled)_
-- Cumulative Capacity Discharge (mAh)  _(disabled)_
-- Cumulative Energy Discharge (Wh)  _(disabled)_
+- Battery Level
+- Battery Level (Precise)  _(disabled)_
+- Battery Level (BMS)  _(disabled)_
+- Battery Level (pack)  _(disabled)_
+- Stored Energy
+- Remaining Time
 - Charge Remaining Time  _(disabled)_
-- Discharge Remaining Time
-- System Stored Energy  _(auto)_
+- Discharge Remaining Time  _(disabled)_
+- Battery Net Power
+- AC Grid Connection Power
+- Battery Power
+- Charge Power Limit  _(disabled)_
+- Max Discharge Power  _(disabled)_
+- Feed-in Power Max  _(disabled)_
+- Power Grid Global
+- Power Grid L1
+- Power Grid L2
+- Power Grid L3
+- Power Grid (L1) Volts  _(disabled)_
+- Power Grid (L2) Volts  _(disabled)_
+- Power Grid (L3) Volts  _(disabled)_
+- Power Grid Frequency  _(disabled)_
+- Min Cell Volts  _(disabled)_
+- Max Cell Volts  _(disabled)_
+- Real State of Health  _(disabled)_
+- State of Health  _(disabled)_
+- Cumulative Capacity Charge (mAh)  _(disabled)_
+- Cumulative Capacity Discharge (mAh)  _(disabled)_
+- Cumulative Energy Charge (Wh)
+- Cumulative Energy Discharge (Wh)
+- Status
+
+*Binary sensors*
+- P1 Meter Link
+
+*Switches*
+- AC Output
+- X-Boost
+- UPS Mode
+
+*Sliders (numbers)*
 - Max Charge Level
 - Min Discharge Level
-- Cycles  _(disabled)_
-- Design Capacity  _(disabled)_
-- Battery Level (Precise)
-- Full Capacity  _(disabled)_
-- Power AC
-- Power Volts  _(disabled)_
-- In Power  _(disabled)_
-- Max Cell Temperature  _(disabled)_
-- Max Cell Volts  _(disabled)_
-- Min Cell Temperature  _(disabled)_
-- Min Cell Volts  _(disabled)_
-- Out Power  _(disabled)_
-- System Battery Power
-- Power PV 1  _(auto)_
-- Power PV 2  _(auto)_
-- Power PV 3  _(auto)_
-- Power PV 4  _(auto)_
-- Power PV Sum
-- Power SCHUKO1  _(auto)_
-- Power SCHUKO2  _(auto)_
-- Power Grid
-- Power Sys Load
-- Power Sys Load From Battery
-- Power Sys Load From Grid
-- Power Sys Load From PV
-- Real State of Health  _(disabled)_
-- Remain Capacity  _(disabled)_
-- Remaining Time  _(disabled)_
-- Battery Level
-- State of Health  _(disabled)_
-- Power AC SYS  _(disabled)_
-- Battery Temperature  _(disabled)_
-- Battery Volts  _(disabled)_
+- Net Power Out Limit
+- Net Power In Limit
+
+*Selects*
+- Work Mode
 
 </p></details>
 
-<details><summary> STREAM_ULTRA_X <i>(sensors: 42)</i> </summary>
+<details><summary> STREAM_PRO <i>(sensors: 43)</i> </summary>
 <p>
 
 *Sensors*
@@ -2114,6 +2140,107 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Power AC SYS  _(disabled)_
 - Battery Temperature  _(disabled)_
 - Battery Volts  _(disabled)_
+- Status
+
+</p></details>
+
+<details><summary> STREAM_ULTRA <i>(sensors: 43)</i> </summary>
+<p>
+
+*Sensors*
+- Cumulative Capacity Charge (mAh)  _(disabled)_
+- Cumulative Energy Charge (Wh)  _(disabled)_
+- Cumulative Capacity Discharge (mAh)  _(disabled)_
+- Cumulative Energy Discharge (Wh)  _(disabled)_
+- Charge Remaining Time  _(disabled)_
+- Discharge Remaining Time
+- System Stored Energy  _(auto)_
+- Max Charge Level
+- Min Discharge Level
+- Cycles  _(disabled)_
+- Design Capacity  _(disabled)_
+- Battery Level (Precise)
+- Full Capacity  _(disabled)_
+- Power AC
+- Power Volts  _(disabled)_
+- In Power  _(disabled)_
+- Max Cell Temperature  _(disabled)_
+- Max Cell Volts  _(disabled)_
+- Min Cell Temperature  _(disabled)_
+- Min Cell Volts  _(disabled)_
+- Out Power  _(disabled)_
+- System Battery Power
+- Power PV 1  _(auto)_
+- Power PV 2  _(auto)_
+- Power PV 3  _(auto)_
+- Power PV 4  _(auto)_
+- Power PV Sum
+- Power SCHUKO1  _(auto)_
+- Power SCHUKO2  _(auto)_
+- Power Grid
+- Power Sys Load
+- Power Sys Load From Battery
+- Power Sys Load From Grid
+- Power Sys Load From PV
+- Real State of Health  _(disabled)_
+- Remain Capacity  _(disabled)_
+- Remaining Time  _(disabled)_
+- Battery Level
+- State of Health  _(disabled)_
+- Power AC SYS  _(disabled)_
+- Battery Temperature  _(disabled)_
+- Battery Volts  _(disabled)_
+- Status
+
+</p></details>
+
+<details><summary> STREAM_ULTRA_X <i>(sensors: 43)</i> </summary>
+<p>
+
+*Sensors*
+- Cumulative Capacity Charge (mAh)  _(disabled)_
+- Cumulative Energy Charge (Wh)  _(disabled)_
+- Cumulative Capacity Discharge (mAh)  _(disabled)_
+- Cumulative Energy Discharge (Wh)  _(disabled)_
+- Charge Remaining Time  _(disabled)_
+- Discharge Remaining Time
+- System Stored Energy  _(auto)_
+- Max Charge Level
+- Min Discharge Level
+- Cycles  _(disabled)_
+- Design Capacity  _(disabled)_
+- Battery Level (Precise)
+- Full Capacity  _(disabled)_
+- Power AC
+- Power Volts  _(disabled)_
+- In Power  _(disabled)_
+- Max Cell Temperature  _(disabled)_
+- Max Cell Volts  _(disabled)_
+- Min Cell Temperature  _(disabled)_
+- Min Cell Volts  _(disabled)_
+- Out Power  _(disabled)_
+- System Battery Power
+- Power PV 1  _(auto)_
+- Power PV 2  _(auto)_
+- Power PV 3  _(auto)_
+- Power PV 4  _(auto)_
+- Power PV Sum
+- Power SCHUKO1  _(auto)_
+- Power SCHUKO2  _(auto)_
+- Power Grid
+- Power Sys Load
+- Power Sys Load From Battery
+- Power Sys Load From Grid
+- Power Sys Load From PV
+- Real State of Health  _(disabled)_
+- Remain Capacity  _(disabled)_
+- Remaining Time  _(disabled)_
+- Battery Level
+- State of Health  _(disabled)_
+- Power AC SYS  _(disabled)_
+- Battery Temperature  _(disabled)_
+- Battery Volts  _(disabled)_
+- Status
 
 </p></details>
 
@@ -2490,7 +2617,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> DELTA 2 Max (API) <i>(sensors: 80, switches: 7, sliders: 6, selects: 3)</i> </summary>
+<details><summary> DELTA 2 Max (API) <i>(sensors: 80, switches: 7, sliders: 6, selects: 4)</i> </summary>
 <p>
 
 *Sensors*
@@ -2596,6 +2723,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Screen Timeout
 - Unit Timeout
 - AC Timeout
+- DC (12V) Timeout
 
 </p></details>
 

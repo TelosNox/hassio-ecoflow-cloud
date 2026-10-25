@@ -87,21 +87,22 @@
 - USB Enabled (`pd.dcOutState` -> `{"moduleType": 1, "operateType": "dcOutCfg", "moduleSn": "SN", "params": {"enabled": "VALUE"}}`)
 - AC Always On (`pd.newAcAutoOnCfg` -> `{"moduleType": 1, "operateType": "newAcAutoOnCfg", "moduleSn": "SN", "params": {"enabled": "VALUE", "minAcSoc": 5}}`)
 - AC Enabled (`inv.cfgAcEnabled` -> `{"moduleType": 3, "operateType": "acOutCfg", "moduleSn": "SN", "params": {"enabled": "VALUE", "out_voltage": -1, "out_freq": 255, "xboost": 255}}`)
-- X-Boost Enabled (`inv.cfgAcXboost` -> `{"moduleType": 3, "operateType": "acOutCfg", "moduleSn": "SN", "params": {"xboost": "VALUE"}}`)
+- X-Boost Enabled (`inv.cfgAcXboost` -> `{"moduleType": 3, "operateType": "acOutCfg", "moduleSn": "SN", "params": {"enabled": 255, "out_voltage": 4294967295, "out_freq": 255, "xboost": "VALUE"}}`)
 - DC (12V) Enabled (`pd.carState` -> `{"moduleType": 5, "operateType": "mpptCar", "params": {"enabled": "VALUE"}}`)
-- Backup Reserve Enabled (`pd.watchIsConfig` -> `{"moduleType": 1, "operateType": "watthConfig", "params": {"bpPowerSoc": 333300, "minChgSoc": 0, "isConfig": "VALUE", "minDsgSoc": 0}}`)
+- Backup Reserve Enabled (`pd.watchIsConfig` -> `{"moduleType": 1, "operateType": "watthConfig", "params": {"bpPowerSoc": 50, "minChgSoc": 0, "isConfig": "VALUE", "minDsgSoc": 0}}`)
 
 *Sliders (numbers)*
 - Max Charge Level (`bms_emsStatus.maxChargeSoc` -> `{"moduleType": 2, "operateType": "upsConfig", "moduleSn": "SN", "params": {"maxChgSoc": "VALUE"}}` [50 - 100])
 - Min Discharge Level (`bms_emsStatus.minDsgSoc` -> `{"moduleType": 2, "operateType": "dsgCfg", "moduleSn": "SN", "params": {"minDsgSoc": "VALUE"}}` [0 - 30])
 - Backup Reserve Level (`pd.bpPowerSoc` -> `{"moduleType": 1, "operateType": "watthConfig", "params": {"isConfig": 1, "bpPowerSoc": "VALUE", "minDsgSoc": 0, "minChgSoc": 0}}` [5 - 100])
-- Generator Auto Start Level (`bms_emsStatus.minOpenOilEbSoc` -> `{"moduleType": 2, "operateType": "openOilSoc", "moduleSn": "SN", "params": {"openOilSoc": "VALUE"}}` [0 - 30])
-- Generator Auto Stop Level (`bms_emsStatus.maxCloseOilEbSoc` -> `{"moduleType": 2, "operateType": "closeOilSoc", "moduleSn": "SN", "params": {"closeOilSoc": "VALUE"}}` [50 - 100])
+- Generator Auto Start Level (`bms_emsStatus.minOpenOilEb` -> `{"moduleType": 2, "operateType": "openOilSoc", "moduleSn": "SN", "params": {"openOilSoc": "VALUE"}}` [0 - 30])
+- Generator Auto Stop Level (`bms_emsStatus.maxCloseOilEb` -> `{"moduleType": 2, "operateType": "closeOilSoc", "moduleSn": "SN", "params": {"closeOilSoc": "VALUE"}}` [50 - 100])
 - AC Charging Power (`inv.SlowChgWatts` -> `{"moduleType": 3, "operateType": "acChgCfg", "moduleSn": "SN", "params": {"slowChgWatts": "VALUE", "fastChgWatts": 2000, "chgPauseFlag": 0}}` [200 - 2400])
 
 *Selects*
 - Screen Timeout (`pd.lcdOffSec` -> `{"moduleType": 1, "operateType": "lcdCfg", "moduleSn": "SN", "params": {"brighLevel": 255, "delayOff": "VALUE"}}` [Never (0), 10 sec (10), 30 sec (30), 1 min (60), 5 min (300), 30 min (1800)])
-- Unit Timeout (`inv.standbyMin` -> `{"moduleType": 1, "operateType": "standbyTime", "moduleSn": "SN", "params": {"standbyMin": "VALUE"}}` [Never (0), 30 min (30), 1 hr (60), 2 hr (120), 4 hr (240), 6 hr (360), 12 hr (720), 24 hr (1440)])
-- AC Timeout (`mppt.carStandbyMin` -> `{"moduleType": 5, "operateType": "standbyTime", "moduleSn": "SN", "params": {"standbyMins": "VALUE"}}` [Never (0), 30 min (30), 1 hr (60), 2 hr (120), 4 hr (240), 6 hr (360), 12 hr (720), 24 hr (1440)])
+- Unit Timeout (`pd.standbyMin` -> `{"moduleType": 1, "operateType": "standbyTime", "moduleSn": "SN", "params": {"standbyMin": "VALUE"}}` [Never (0), 30 min (30), 1 hr (60), 2 hr (120), 4 hr (240), 6 hr (360), 12 hr (720), 24 hr (1440)])
+- AC Timeout (`inv.standbyMin` -> `{"moduleType": 3, "operateType": "standbyTime", "moduleSn": "SN", "params": {"standbyMin": "VALUE"}}` [Never (0), 30 min (30), 1 hr (60), 2 hr (120), 4 hr (240), 6 hr (360), 12 hr (720), 24 hr (1440)])
+- DC (12V) Timeout (`mppt.carStandbyMin` -> `{"moduleType": 5, "operateType": "standbyTime", "moduleSn": "SN", "params": {"standbyMin": "VALUE"}}` [Never (0), 30 min (30), 1 hr (60), 2 hr (120), 4 hr (240), 6 hr (360), 12 hr (720), 24 hr (1440)])
 
 

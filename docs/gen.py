@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import Mock
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import frame
 from homeassistant.helpers.frame import async_setup as frame_setup
 
 from custom_components.ecoflow_cloud.api.message import PrivateAPIMessageProtocol
@@ -95,6 +96,10 @@ class MockSetup:
 
         await hass.async_start()
         frame_setup(hass)
+        # Outside a real integration HA treats this script as core code and turns
+        # usage reports (e.g. coordinators without config_entry) into errors;
+        # inside the integration they are ignored for custom integrations.
+        frame.report_usage = lambda *args, **kwargs: None
 
         logger.info("Home Assistant mock setup completed")
         return hass
