@@ -8,6 +8,7 @@ from homeassistant.const import UnitOfTemperature
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.devices import BaseInternalDevice, const
+from custom_components.ecoflow_cloud.entities import EcoFlowDictEntity
 from custom_components.ecoflow_cloud.number import SetTempEntity
 from custom_components.ecoflow_cloud.select import DictSelectEntity
 from custom_components.ecoflow_cloud.sensor import (
@@ -59,19 +60,32 @@ class Wave2SetTempEntity(SetTempEntity):
             self.schedule_update_ha_state()
 
 
+def _legacy_unique_id[T: EcoFlowDictEntity](entity: T, legacy_key: str) -> T:
+    """Read the documented key but keep the unique_id derived from an earlier, mistyped key."""
+    entity._attr_unique_id = entity._gen_unique_id(entity._device.device_data.sn, legacy_key)
+    return entity
+
+
 class Wave2(BaseInternalDevice):
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         return [
             # Power and Battery Entities
-            LevelSensorEntity(client, self, "bms.soc", const.MAIN_BATTERY_LEVEL).attr(
-                "bms.remainCap", const.ATTR_REMAIN_CAPACITY, 0
+            _legacy_unique_id(
+                LevelSensorEntity(client, self, "pd.batSoc", const.MAIN_BATTERY_LEVEL).attr(
+                    "bms.remainCap", const.ATTR_REMAIN_CAPACITY, 0
+                ),
+                "bms.soc",
             ),
             CapacitySensorEntity(client, self, "bms.remainCap", const.MAIN_REMAIN_CAPACITY, False),
             TempSensorEntity(client, self, "bms.tmp", const.BATTERY_TEMP)
             .attr("bms.minCellTemp", const.ATTR_MIN_CELL_TEMP, 0)
             .attr("bms.maxCellTemp", const.ATTR_MAX_CELL_TEMP, 0),
-            TempSensorEntity(client, self, "bms.minCellTmp", const.MIN_CELL_TEMP, False),
-            TempSensorEntity(client, self, "bms.maxCellTmp", const.MAX_CELL_TEMP, False),
+            _legacy_unique_id(
+                TempSensorEntity(client, self, "bms.minCellTemp", const.MIN_CELL_TEMP, False), "bms.minCellTmp"
+            ),
+            _legacy_unique_id(
+                TempSensorEntity(client, self, "bms.maxCellTemp", const.MAX_CELL_TEMP, False), "bms.maxCellTmp"
+            ),
             RemainSensorEntity(client, self, "pd.batChgRemain", const.CHARGE_REMAINING_TIME),
             RemainSensorEntity(client, self, "pd.batDsgRemain", const.DISCHARGE_REMAINING_TIME),
             # heat pump
@@ -88,15 +102,15 @@ class Wave2(BaseInternalDevice):
             WattsSensorEntity(client, self, "pd.batPwrOut", "Battery output power"),
             WattsSensorEntity(client, self, "pd.pvPower", "PV charging power"),
             WattsSensorEntity(client, self, "pd.acPwrIn", "AC input power"),
-            WattsSensorEntity(client, self, "pd.psdrPower ", "Power supply power"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "pd.psdrPower", "Power supply power"), "pd.psdrPower "),
             WattsSensorEntity(client, self, "pd.sysPowerWatts", "System power"),
-            WattsSensorEntity(client, self, "pd.batPower ", "Battery power"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "pd.batPower", "Battery power"), "pd.batPower "),
             # power (motor)
             WattsSensorEntity(client, self, "motor.power", "Motor operating power"),
             # power (power)
             WattsSensorEntity(client, self, "power.batPwrOut", "Battery output power"),
-            WattsSensorEntity(client, self, "power.acPwrI", "AC input power"),
-            WattsSensorEntity(client, self, "power.mpptPwr ", "PV input power"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "power.acPwrIn", "AC input power"), "power.acPwrI"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "power.mpptPwr", "PV input power"), "power.mpptPwr "),
             QuotaStatusSensorEntity(client, self),
         ]
 

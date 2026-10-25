@@ -2958,7 +2958,7 @@
 - Solar (3) Event Code  _(disabled)_
 - Solar (3) Warn Code
 - Solar (3) Temperature
-- Solar Total Charge Current  _(disabled)_
+- Solar Total Charge Energy  _(disabled)_
 - Solar Energy for Day  _(disabled)_
 
 ### lddc
@@ -3580,7 +3580,7 @@
 
 </p></details>
 
-<details><summary> Power Ocean (API) <i>(sensors: 26)</i> </summary>
+<details><summary> Power Ocean (API) <i>(sensors: 29)</i> </summary>
 <p>
 
 *Sensors*
@@ -3603,6 +3603,9 @@
 - sysGridPwr
 - sysLoadPwr
 - bpPwr
+- mpptPwr  _(auto)_
+- evPwr  _(auto)_
+- chargingStatus  _(auto)_
 - mpptPv1.pwr
 - mpptPv1.amp
 - mpptPv1.vol

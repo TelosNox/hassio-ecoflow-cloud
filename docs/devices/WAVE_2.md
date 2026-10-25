@@ -1,11 +1,11 @@
 ## WAVE_2
 
 *Sensors*
-- Main Battery Level (`bms.soc`)
+- Main Battery Level (`pd.batSoc`)
 - Main Remain Capacity (`bms.remainCap`)   _(disabled)_
 - Battery Temperature (`bms.tmp`)
-- Min Cell Temperature (`bms.minCellTmp`)   _(disabled)_
-- Max Cell Temperature (`bms.maxCellTmp`)   _(disabled)_
+- Min Cell Temperature (`bms.minCellTemp`)   _(disabled)_
+- Max Cell Temperature (`bms.maxCellTemp`)   _(disabled)_
 - Charge Remaining Time (`pd.batChgRemain`)
 - Discharge Remaining Time (`pd.batDsgRemain`)
 - Condensation temperature (`pd.condTemp`)   _(disabled)_
@@ -20,13 +20,13 @@
 - Battery output power (`pd.batPwrOut`)
 - PV charging power (`pd.pvPower`)
 - AC input power (`pd.acPwrIn`)
-- Power supply power (`pd.psdrPower `)
+- Power supply power (`pd.psdrPower`)
 - System power (`pd.sysPowerWatts`)
-- Battery power (`pd.batPower `)
+- Battery power (`pd.batPower`)
 - Motor operating power (`motor.power`)
 - Battery output power (`power.batPwrOut`)
-- AC input power (`power.acPwrI`)
-- PV input power (`power.mpptPwr `)
+- AC input power (`power.acPwrIn`)
+- PV input power (`power.mpptPwr`)
 - Status
 
 *Sliders (numbers)*

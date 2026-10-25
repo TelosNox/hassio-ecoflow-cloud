@@ -20,6 +20,9 @@
 - sysGridPwr (`sysGridPwr`)
 - sysLoadPwr (`sysLoadPwr`)
 - bpPwr (`bpPwr`)
+- mpptPwr (`mpptPwr`)   _(auto)_
+- evPwr (`evPwr`)   _(auto)_
+- chargingStatus (`chargingStatus`)   _(auto)_
 - mpptPv1.pwr (`96_1.mpptHeartBeat[0].mpptPv[0].pwr`)
 - mpptPv1.amp (`96_1.mpptHeartBeat[0].mpptPv[0].amp`)
 - mpptPv1.vol (`96_1.mpptHeartBeat[0].mpptPv[0].vol`)

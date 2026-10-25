@@ -15,11 +15,12 @@ from custom_components.ecoflow_cloud.sensor import (
     ChargingStateSensorEntity,
     CyclesSensorEntity,
     DeciMilliVoltSensorEntity,
+    EnergySensorEntity,
     FanSensorEntity,
     FrequencySensorEntity,
     InRawTotalWattsSolarSensorEntity,
+    InRawWattsSolarSensorEntity,
     InWattsSensorEntity,
-    InWattsSolarSensorEntity,
     LevelSensorEntity,
     MilliampSensorEntity,
     MilliVoltSensorEntity,
@@ -287,7 +288,7 @@ class PowerKit(BaseDevice):
             ),
             MilliampSensorEntity(client, self, "batCurr", "Solar Battery Current", True),
             MilliVoltSensorEntity(client, self, "batVol", "Solar Battery Voltage", True),
-            InWattsSolarSensorEntity(client, self, "pv1InWatts", const.SOLAR_2_IN_POWER, True),
+            InRawWattsSolarSensorEntity(client, self, "pv1InWatts", const.SOLAR_2_IN_POWER, True),
             MilliVoltSensorEntity(client, self, "pv1InVol", "Solar (2) In Voltage", True),
             MilliampSensorEntity(client, self, "pv1InCurr", "Solar (2) In Current", True),
             MiscSensorEntity(client, self, "pv1ErrCode", "Solar (2) Error Code", True),
@@ -316,7 +317,7 @@ class PowerKit(BaseDevice):
             ),
             MiscSensorEntity(client, self, "warnCode1", "Solar (2) Warn Code", True),
             TempSensorEntity(client, self, "hs1Temp", "Solar (2) Temperature", True),
-            InWattsSolarSensorEntity(client, self, "pv2InWatts", "Solar (3) In Power", True),
+            InRawWattsSolarSensorEntity(client, self, "pv2InWatts", "Solar (3) In Power", True),
             MilliVoltSensorEntity(client, self, "pv2InVol", "Solar (3) In Voltage", True),
             MilliampSensorEntity(client, self, "pv2InCurr", "Solar (3) In Current", True),
             MiscSensorEntity(client, self, "pv2ErrCode", "Solar (3) Error Code", True),
@@ -345,14 +346,14 @@ class PowerKit(BaseDevice):
             ),
             MiscSensorEntity(client, self, "warnCode2", "Solar (3) Warn Code", True),
             TempSensorEntity(client, self, "hs2Temp", "Solar (3) Temperature", True),
-            MilliampSensorEntity(
+            EnergySensorEntity(
                 client,
                 self,
                 "chgEnergy",
-                "Solar Total Charge Current",
+                "Solar Total Charge Energy",
                 False,
-            ),  # Not in use
-            MilliampSensorEntity(client, self, "dayEnergy", "Solar Energy for Day", False),  # Not in use
+            ),
+            EnergySensorEntity(client, self, "dayEnergy", "Solar Energy for Day", False),
         ]
 
     def powerHubDCOutSensors(
@@ -409,9 +410,7 @@ class PowerKit(BaseDevice):
             MilliampSensorEntity(client, self, "batCurr", "DC In Battery Current", True),  # 78 DC input
             MilliVoltSensorEntity(client, self, "batVol", "DC In Battery Voltage", True),  # 53438 DC input
             MiscSensorEntity(client, self, "allowDsgOn", "DC Allow Discharge", True),  # 1 DC input
-            MilliampSensorEntity(
-                client, self, "dsgEnergy", "DC Discharge Energy", False
-            ),  # 789 Unsure what this one is. Could be some kind of total
+            EnergySensorEntity(client, self, "dsgEnergy", "DC Discharge Energy", False),  # 789 Wh, accumulated
             MiscSensorEntity(client, self, "dcInState", "DC In State", True),  # 0 DC input
             OutWattsSensorEntity(client, self, "dcInWatts", "DC In Power", True),  # 0 DC input
             MilliampSensorEntity(client, self, "dcInCurr", "DC In Current", True),  # 0 DC input
@@ -604,7 +603,7 @@ class PowerKit(BaseDevice):
                     self,
                     "NotExisting",
                     const.AC_CHARGING_POWER,
-                    0,
+                    1,  # documented range of acCurrMaxSet is 1-23 A
                     16,  # This is not the real limit of the powerkit, but because it has a normal 230V plug, we don't allow here to go over 16A because you will maybe frie your socket
                     lambda value: {
                         "id": 123456789,

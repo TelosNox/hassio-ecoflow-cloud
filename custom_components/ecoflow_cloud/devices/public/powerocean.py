@@ -88,6 +88,11 @@ class PowerOcean(BaseDevice):
             WattsSensorEntity(client, self, "sysGridPwr", "sysGridPwr"),
             WattsSensorEntity(client, self, "sysLoadPwr", "sysLoadPwr"),
             WattsSensorEntity(client, self, "bpPwr", "bpPwr"),
+            # Further quota/all fields; enabled only if the system reports them
+            # (evPwr / chargingStatus come from a PowerPulse EV charger).
+            SolarPowerSensorEntity(client, self, "mpptPwr", "mpptPwr", False, True),
+            WattsSensorEntity(client, self, "evPwr", "evPwr", False, True),
+            MiscSensorEntity(client, self, "chargingStatus", "chargingStatus", False, True),
         ]
 
         mppt_prefix, string_count = self._determine_mppt_metadata()
