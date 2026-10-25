@@ -430,6 +430,13 @@ class River3(BaseInternalDevice):
                 decoded = self._decode_message_by_type(decoded_pdata, header_info)
                 if decoded:
                     merged.update(decoded)
+                else:
+                    _LOGGER.debug(
+                        "[River3] skipped header cmdFunc=%s cmdId=%s src=%s: nothing decoded",
+                        header_info["cmdFunc"],
+                        header_info["cmdId"],
+                        header_info["src"],
+                    )
             except Exception as e:
                 _LOGGER.debug("[River3] header decode failed: %s", e)
                 continue
@@ -438,10 +445,18 @@ class River3(BaseInternalDevice):
     @override
     def _prepare_data(self, raw_data: bytes) -> dict[str, Any]:
         """Prepare River 3 data by decoding protobuf and flattening fields."""
+        # Status messages and command replies can be JSON rather than protobuf.
+        # Anything else is protobuf: handing it to the JSON parser only logs a
+        # WARNING + ERROR pair per message (issues #872, #936) and yields {}.
+        # Check the first byte only: protobuf frames start with 0x0a, which
+        # lstrip() would remove as whitespace (see DELTA Pro 3, #925).
+        if raw_data.startswith(b"{"):
+            return super()._prepare_data(raw_data)
+
         try:
             merged = self._decode_all_headers(raw_data)
             if not merged:
-                return super()._prepare_data(raw_data)
+                return {}
 
             # River 3 firmware doesn't send cfg_ac_out_open directly. The
             # live AC output state is carried by flow_info_ac_out instead
@@ -465,7 +480,7 @@ class River3(BaseInternalDevice):
             return {"params": flat, "all_fields": merged}
         except Exception as e:
             _LOGGER.debug(f"[River3] Data processing failed: {e}")
-            return super()._prepare_data(raw_data)
+            return {}
 
     def _perform_xor_decode(self, pdata: bytes, header_info: dict[str, Any]) -> bytes:
         """Perform XOR decoding if required by header info."""

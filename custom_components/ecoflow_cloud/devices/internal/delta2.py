@@ -242,10 +242,16 @@ class Delta2(BaseInternalDevice):
                 self,
                 "pd.watchIsConfig",
                 const.BP_ENABLED,
-                lambda value: {
+                lambda value, params: {
                     "moduleType": 1,
                     "operateType": "watthConfig",
-                    "params": {"bpPowerSoc": value * 50, "minChgSoc": 0, "isConfig": value, "minDsgSoc": 0},
+                    "params": {
+                        # keep the configured level; value * 50 reset it to 50 % on every enable
+                        "bpPowerSoc": int(params.get("pd.bpPowerSoc") or 50) if value else 0,
+                        "minChgSoc": 0,
+                        "isConfig": value,
+                        "minDsgSoc": 0,
+                    },
                 },
             ),
         ]
