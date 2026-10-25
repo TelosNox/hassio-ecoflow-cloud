@@ -76,7 +76,7 @@
 - AC Charging (`chgDsgState` -> `{"id": 123456789, "version": "1.0", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": 255, "powerOn": 255, "acChgDisa": 1, "acFrequencySet": 255, "wakeup": 1, "standbyTime": 255, "acRlyCtrlDisable": 255, "acVolSet": 255, "passByMaxCurr": 255}}`)
 
 *Sliders (numbers)*
-- AC Charging Power (`NotExisting` -> `{"id": 123456789, "version": "1.0", "sn": "SN", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": "VALUE"}}` [0 - 16])
+- AC Charging Power (`NotExisting` -> `{"id": 123456789, "version": "1.0", "sn": "SN", "moduleSn": "SN", "moduleType": 15365, "operateType": "dischgIcParaSet", "params": {"acCurrMaxSet": "VALUE"}}` [1 - 16])
 
 ### bpxxx
 
@@ -122,7 +122,7 @@
 - Solar (3) Event Code (`eventCode2`)   _(disabled)_
 - Solar (3) Warn Code (`warnCode2`)
 - Solar (3) Temperature (`hs2Temp`)
-- Solar Total Charge Current (`chgEnergy`)   _(disabled)_
+- Solar Total Charge Energy (`chgEnergy`)   _(disabled)_
 - Solar Energy for Day (`dayEnergy`)   _(disabled)_
 
 ### lddc
