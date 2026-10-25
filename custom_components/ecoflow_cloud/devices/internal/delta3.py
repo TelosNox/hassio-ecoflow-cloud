@@ -365,6 +365,7 @@ class Delta3(BaseInternalDevice):
             OutVoltSensorEntity(client, self, "plug_in_info_ac_out_vol", const.AC_OUT_VOLT),
             OutWattsSensorEntity(client, self, "pow_get_12v", const.DC_OUT_POWER),
             OutWattsAbsSensorEntity(client, self, "pow_get_typec1", const.TYPEC_1_OUT_POWER),
+            OutWattsAbsSensorEntity(client, self, "pow_get_typec2", const.TYPEC_2_OUT_POWER),
             OutWattsAbsSensorEntity(client, self, "pow_get_qcusb1", const.USB_QC_1_OUT_POWER),
             OutWattsAbsSensorEntity(client, self, "pow_get_qcusb2", const.USB_QC_2_OUT_POWER),
             RemainSensorEntity(client, self, "bms_chg_rem_time", const.CHARGE_REMAINING_TIME),
