@@ -37,6 +37,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PowerStream(BaseDevice):
+    @staticmethod
+    def default_charging_power_step() -> int:
+        # permanentWatts is set in 0.1 W (doc example: 213 = 21.3 W), so the
+        # generic 100 W step is an integration limit, not a device one.
+        return 1
+
     def sensors(self, client: EcoflowApiClient) -> Sequence[SensorEntity]:
         return [
             CelsiusSensorEntity(client, self, "20_1.espTempsensor", "ESP Temperature"),

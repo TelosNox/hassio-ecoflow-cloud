@@ -152,6 +152,12 @@ class PowerStreamCommandMessage(PrivateAPIMessageProtocol):
 
 
 class PowerStream(BaseInternalDevice):
+    @staticmethod
+    def default_charging_power_step() -> int:
+        # permanentWatts is set in 0.1 W (doc example: 213 = 21.3 W), so the
+        # generic 100 W step is an integration limit, not a device one.
+        return 1
+
     @override
     def sensors(self, client: EcoflowApiClient) -> Sequence[SensorEntity]:
         return [
