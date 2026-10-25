@@ -260,6 +260,9 @@ class StreamAC(BaseInternalDevice):
             # "plugInInfoPv3Flag": false,
             # "powConsumptionMeasurement": 2,
             # "powGetBpCms": 1915.0862,
+            # The linked system's battery power: 1915 W here while this unit's own
+            # pack takes inputWatts 900 W (= amp x vol). A unit that does not compute
+            # the system figures sends 0 (shuette42/ecoflow-energy-ha#486).
             WattsSensorEntity(client, self, "powGetBpCms", const.STREAM_POWER_BATTERY),
             # Per-PV power/voltage/current -- see _ultra_x_pv_sensors().
             *self._ultra_x_pv_sensors(client),

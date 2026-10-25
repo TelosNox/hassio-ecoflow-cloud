@@ -23,7 +23,7 @@
 - Min Cell Temperature (`minCellTemp`)   _(disabled)_
 - Min Cell Volts (`minCellVol`)   _(disabled)_
 - Out Power (`outputWatts`)
-- Power Battery (`powGetBpCms`)
+- System Battery Power (`powGetBpCms`)
 - Power PV 1 (`pvWatts_plugInInfoPvAmp`)   _(auto)_
 - Power PV 2 (`pvWatts_plugInInfoPv2Amp`)   _(auto)_
 - Power PV 3 (`pvWatts_plugInInfoPv3Amp`)   _(auto)_

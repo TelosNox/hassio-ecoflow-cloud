@@ -410,7 +410,10 @@ STREAM_GET_SYS_LOAD_FROM_PV = "Power Sys Load From PV" # powGetSysLoadFromPv
 STREAM_GET_SCHUKO1 = "Power SCHUKO1" # powGetSchuko1
 STREAM_GET_SCHUKO2 = "Power SCHUKO2" # powGetSchuko2
 STREAM_POWER_GRID = "Power Grid" # power from smart meter or shelly
-STREAM_POWER_BATTERY = "Power Battery" # <0 discharge battery / >0 charge batterie
+# powGetBpCms: battery power of the whole linked system, AC side, filled by the
+# unit that computes the system figures only (the others send 0). This unit's
+# own battery power is inputWatts / outputWatts.
+STREAM_POWER_BATTERY = "System Battery Power" # <0 discharge battery / >0 charge batterie
 STREAM_BATTERY_LEVEL_PRECISE = "Battery Level (Precise)"  # f32ShowSoc
 STREAM_BATTERY_LEVEL = "Battery Level"
 # cmsBatt* fields describe the whole linked STREAM system and are only
