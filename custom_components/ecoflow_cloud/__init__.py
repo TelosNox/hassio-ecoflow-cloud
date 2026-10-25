@@ -307,6 +307,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.async_add_executor_job(api_client.start)
     hass.data[ECOFLOW_DOMAIN][entry.entry_id] = api_client
 
+    # STREAM system commands go to the system's main SN; never blocks the setup
+    try:
+        await api_client.async_refresh_main_sns()
+    except Exception as ex:
+        _LOGGER.warning("Failed to resolve system main SNs: %s", ex)
+
     # Must load all device data before configuring devices because the data
     # is used for entity setup.
     await api_client.quota_all(None)

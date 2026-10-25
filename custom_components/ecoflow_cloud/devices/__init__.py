@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
+from custom_components.ecoflow_cloud.api.commands import MainSnCache
 from custom_components.ecoflow_cloud.api.message import JSONDict, JSONMessage, Message
 from custom_components.ecoflow_cloud.device_data import DeviceData
 from custom_components.ecoflow_cloud.devices.data_coordinator import DeviceDataCoordinator
@@ -91,6 +92,15 @@ class BaseDevice(ABC):
 
     def flat_json(self) -> bool:
         return True
+
+    @property
+    def main_sn_cache(self) -> MainSnCache | None:
+        """Main SN of the system this device belongs to, for devices whose
+        system commands go to that SN. None: every command uses the own SN."""
+        return None
+
+    def set_command_target_sn(self, command: Message) -> str:
+        return self.device_info.sn
 
     async def async_restore_state(self):
         """Restore persisted device state on startup. Override in subclasses."""

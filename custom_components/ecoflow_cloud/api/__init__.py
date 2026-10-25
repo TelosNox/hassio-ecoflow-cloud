@@ -148,12 +148,66 @@ class EcoflowApiClient(ABC):
         if isinstance(command, dict):
             command = JSONMessage(command)
 
-        self.devices[device_sn].data.update_to_target_state(mqtt_state)
+        device = self.devices[device_sn]
+        topic = device.device_info.set_topic
+        target_sn = device.set_command_target_sn(command)
+        if target_sn != device.device_info.sn:
+            routed_topic = self._set_topic_for(target_sn)
+            if routed_topic is not None and isinstance(command, JSONMessage):
+                topic = routed_topic
+                if "sn" in command.data:
+                    command.data["sn"] = target_sn
+            else:
+                target_sn = device.device_info.sn
+
+        device.data.update_to_target_state(mqtt_state)
         # Every write is logged, so a setting that changed "by itself" can be
         # traced to a command from this integration or ruled out (tolwi#819, #922).
         # The payload carries the SN and the command, no credentials.
-        _LOGGER.info("Sending set command for %s: %s", device_sn, command.describe())
-        self.mqtt_client.publish(self.devices[device_sn].device_info.set_topic, command.to_mqtt_payload())
+        if target_sn != device_sn:
+            _LOGGER.info("Sending set command for %s to system main SN %s: %s", device_sn, target_sn, command.describe())
+        else:
+            _LOGGER.info("Sending set command for %s: %s", device_sn, command.describe())
+        self.mqtt_client.publish(topic, command.to_mqtt_payload())
+
+    def _set_topic_for(self, sn: str) -> str | None:
+        """Set topic of another device of this account; None if the API has no such topic."""
+        return None
+
+    def _set_reply_topic_for(self, sn: str) -> str | None:
+        return None
+
+    async def fetch_main_sn(self, device_sn: str) -> str | None:
+        """Main SN of the system the device belongs to; None if unknown."""
+        return None
+
+    async def async_refresh_main_sn(self, device) -> None:
+        cache = device.main_sn_cache
+        if cache is None or not cache.begin_refresh():
+            return
+        main_sn = None
+        try:
+            main_sn = await self.fetch_main_sn(device.device_info.sn)
+        finally:
+            changed = cache.accept(main_sn)
+        if main_sn is None:
+            if not cache.resolved and cache.failures == 1:
+                _LOGGER.warning(
+                    "Could not get the system main SN for %s, system commands go to its own SN for now",
+                    device.device_info.sn,
+                )
+            return
+        if changed:
+            _LOGGER.info("System main SN for %s is %s", device.device_info.sn, main_sn)
+        if main_sn != device.device_info.sn:
+            # the device answers a command on the topic it was sent to
+            reply_topic = self._set_reply_topic_for(main_sn)
+            if reply_topic is not None and getattr(self, "mqtt_client", None) is not None:
+                self.mqtt_client.add_topic(reply_topic)
+
+    async def async_refresh_main_sns(self) -> None:
+        for device in list(self.devices.values()):
+            await self.async_refresh_main_sn(device)
 
     def start(self):
         _LOGGER.debug("Starting MQTT client for %s", self.mqtt_info.client_id)

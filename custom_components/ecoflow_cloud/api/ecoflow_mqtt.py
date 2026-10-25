@@ -27,6 +27,8 @@ class EcoflowMQTTClient:
         self.on_auth_failure: Callable[[], None] | None = None
         self.__mqtt_info = mqtt_info
         self.__devices: dict[str, BaseDevice] = devices
+        # topics outside the devices' own, e.g. the set_reply of a STREAM system's main unit
+        self.__extra_topics: set[str] = set()
 
         from homeassistant.components.mqtt.async_client import AsyncMQTTClient
 
@@ -55,6 +57,14 @@ class EcoflowMQTTClient:
             self.__client.loop_start()
         except TimeoutError:
             _LOGGER.exception("Initial EcoFlow MQTT connection timed out; entities will retry reconnect from status updates")
+
+    def add_topic(self, topic: str) -> None:
+        if topic in self.__extra_topics or topic in self.__target_topics():
+            return
+        self.__extra_topics.add(topic)
+        if self.__client.is_connected():
+            self.__client.subscribe([(topic, 1)])
+            _LOGGER.info(f"Subscribed to MQTT topic {topic}")
 
     def is_connected(self):
         return self.__client.is_connected()
@@ -150,5 +160,6 @@ class EcoflowMQTTClient:
         for device in self.__devices.values():
             for topic in device.device_info.topics():
                 topics.append(topic)
+        topics.extend(self.__extra_topics)
         # Remove duplicates that can occur when multiple devices have the same topic (for example sub devices)
         return list(set(topics))

@@ -123,6 +123,26 @@ class EcoflowPublicApiClient(EcoflowApiClient):
             )
             return json_resp
 
+    async def fetch_main_sn(self, device_sn: str) -> str | None:
+        # stream.md, "Obtain the main device serial number of the STREAM system":
+        # GET /iot-open/sign/device/system/main/sn?sn=<any SN of the system>,
+        # response data.sn = "the serial number of the main device"
+        try:
+            response = await self.call_api("/device/system/main/sn", {"sn": device_sn})
+        except Exception as error:
+            _LOGGER.debug("Main SN lookup for %s failed: %s", device_sn, error)
+            return None
+        data = response.get("data")
+        if isinstance(data, dict) and isinstance(data.get("sn"), str) and data["sn"]:
+            return data["sn"]
+        return None
+
+    def _set_topic_for(self, sn: str) -> str | None:
+        return f"/open/{self.mqtt_info.username}/{sn}/set"
+
+    def _set_reply_topic_for(self, sn: str) -> str | None:
+        return f"/open/{self.mqtt_info.username}/{sn}/set_reply"
+
     def _create_device_info(
         self, device_sn: str, device_name: str, device_type: str, status: int = -1
     ) -> EcoflowDeviceInfo:

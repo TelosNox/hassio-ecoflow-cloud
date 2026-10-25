@@ -774,6 +774,13 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
         if self._schedule_mqtt_reconnect():
             changed = True
 
+        main_sn = self._device.main_sn_cache
+        if main_sn is not None and main_sn.due():
+            self.hass.async_create_background_task(
+                self._client.async_refresh_main_sn(self._device),
+                f"refresh main sn {self._device.device_info.sn}",
+            )
+
         # Active polling when device goes silent
         if self._poll_when_silent and status == OnlineStatus.ASSUME_OFFLINE:  # noqa: SIM102
             if (dt.utcnow() - self._last_poll).total_seconds() >= self._tracker.assume_offline_sec:
