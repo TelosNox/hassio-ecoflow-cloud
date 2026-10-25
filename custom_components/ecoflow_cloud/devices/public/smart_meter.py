@@ -48,6 +48,10 @@ class SmartMeter(BaseDevice):
             EnergySensorEntity(
                 client, self, "gridConnectionDataRecord.todayActive", const.SMART_METER_RECORD_ACTIVE_TODAY
             ),
+            # todayActiveL1-3 and totalActiveEnergy are cumulative net
+            # counters (import minus export) that fall during export; only
+            # todayActive (import) and totalReactiveEnergy (export) only rise
+            # (shuette42/ecoflow-energy-ha#331).
             NetEnergySensorEntity(
                 client,
                 self,
