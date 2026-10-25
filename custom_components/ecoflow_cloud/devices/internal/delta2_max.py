@@ -415,7 +415,7 @@ class Delta2Max(BaseInternalDevice):
             TimeoutDictSelectEntity(
                 client,
                 self,
-                "inv.standbyMin",
+                "pd.standbyMin",
                 const.UNIT_TIMEOUT,
                 const.UNIT_TIMEOUT_OPTIONS,
                 lambda value: {
@@ -428,14 +428,27 @@ class Delta2Max(BaseInternalDevice):
             TimeoutDictSelectEntity(
                 client,
                 self,
-                "mppt.carStandbyMin",
+                "inv.standbyMin",
                 const.AC_TIMEOUT,
                 const.AC_TIMEOUT_OPTIONS,
+                lambda value: {
+                    "moduleType": 3,
+                    "operateType": "standbyTime",
+                    "moduleSn": self.device_info.sn,
+                    "params": {"standbyMin": value},
+                },
+            ),
+            TimeoutDictSelectEntity(
+                client,
+                self,
+                "mppt.carStandbyMin",
+                const.DC_TIMEOUT,
+                const.DC_TIMEOUT_OPTIONS,
                 lambda value: {
                     "moduleType": 5,
                     "operateType": "standbyTime",
                     "moduleSn": self.device_info.sn,
-                    "params": {"standbyMins": value},
+                    "params": {"standbyMin": value},
                 },
             ),
         ]
