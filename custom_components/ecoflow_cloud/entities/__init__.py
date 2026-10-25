@@ -79,6 +79,16 @@ class EcoFlowAbstractEntity(Entity):
         return self
 
 
+def keep_unique_id[T: EcoFlowAbstractEntity](entity: T, legacy_key: str) -> T:
+    """Read the documented key but keep the unique_id derived from an earlier, wrong key.
+
+    Entity history, names and automations stay attached, and no config entry
+    migration is needed, so a downgrade still loads the entry.
+    """
+    entity._attr_unique_id = entity._gen_unique_id(entity._device.device_data.sn, legacy_key)
+    return entity
+
+
 class EcoFlowAbstractDataEntity(EcoFlowAbstractEntity, CoordinatorEntity[DeviceDataCoordinator]):
     _attr_should_poll = False
 

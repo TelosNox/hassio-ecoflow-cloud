@@ -5,6 +5,7 @@ from homeassistant.components.switch import SwitchEntity
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.devices import BaseInternalDevice, const
+from custom_components.ecoflow_cloud.entities import keep_unique_id
 from custom_components.ecoflow_cloud.number import (
     BatteryBackupLevel,
     ChargingPowerEntity,
@@ -269,10 +270,12 @@ class Delta2Max(BaseInternalDevice):
                     "params": {"isConfig": 1, "bpPowerSoc": int(value), "minDsgSoc": 0, "minChgSoc": 0},
                 },
             ),
-            MinGenStartLevelEntity(
+            # delta_2_max.md documents bms_emsStatus.minOpenOilEb / maxCloseOilEb;
+            # the *Soc keys never arrive. unique_ids stay those of the old keys.
+            keep_unique_id(MinGenStartLevelEntity(
                 client,
                 self,
-                "bms_emsStatus.minOpenOilEbSoc",
+                "bms_emsStatus.minOpenOilEb",
                 const.GEN_AUTO_START_LEVEL,
                 0,
                 30,
@@ -282,11 +285,11 @@ class Delta2Max(BaseInternalDevice):
                     "moduleSn": self.device_info.sn,
                     "params": {"openOilSoc": value},
                 },
-            ),
-            MaxGenStopLevelEntity(
+            ), "bms_emsStatus.minOpenOilEbSoc"),
+            keep_unique_id(MaxGenStopLevelEntity(
                 client,
                 self,
-                "bms_emsStatus.maxCloseOilEbSoc",
+                "bms_emsStatus.maxCloseOilEb",
                 const.GEN_AUTO_STOP_LEVEL,
                 50,
                 100,
@@ -296,7 +299,7 @@ class Delta2Max(BaseInternalDevice):
                     "moduleSn": self.device_info.sn,
                     "params": {"closeOilSoc": value},
                 },
-            ),
+            ), "bms_emsStatus.maxCloseOilEbSoc"),
             ChargingPowerEntity(
                 client,
                 self,
