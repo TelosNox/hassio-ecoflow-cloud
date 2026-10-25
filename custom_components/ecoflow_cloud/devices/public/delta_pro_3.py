@@ -195,6 +195,10 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgBeepEn": value},
                 },
+                # enBeep / cfgBeepEn are true when the beeper is on, unlike the
+                # inverted quiet-mode flags BeeperEntity defaults to
+                enableValue=1,
+                disableValue=0,
             ),
             EnabledEntity(
                 client,
