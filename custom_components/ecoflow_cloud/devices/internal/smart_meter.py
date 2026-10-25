@@ -24,6 +24,7 @@ from custom_components.ecoflow_cloud.sensor import (
     EnergySensorEntity,
     InAmpSensorEntity,
     MiscSensorEntity,
+    NetEnergySensorEntity,
     QuotaStatusSensorEntity,
     StatusSensorEntity,
     VoltSensorEntity,
@@ -208,28 +209,28 @@ class SmartMeter(BaseInternalDevice):
             #     const.SMART_METER_FLAG_L3,
             #     False,
             # ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client,
                 self,
                 "254_21.energy.energyL1daily",
                 const.SMART_METER_RECORD_ENERGY_L1_DAILY,
                 False,
             ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client,
                 self,
                 "254_21.energy.energyL2daily",
                 const.SMART_METER_RECORD_ENERGY_L2_DAILY,
                 False,
             ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client,
                 self,
                 "254_21.energy.energyL3daily",
                 const.SMART_METER_RECORD_ENERGY_L3_DAILY,
                 False,
             ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client,
                 self,
                 "254_21.energy.netEnergyConsumption",

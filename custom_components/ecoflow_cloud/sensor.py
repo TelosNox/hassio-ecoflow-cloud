@@ -495,6 +495,24 @@ class EnergySensorEntity(BaseSensorEntity):
             return False
 
 
+class NetEnergySensorEntity(EnergySensorEntity):
+    """Net (import minus export) energy counter.
+
+    It falls while energy is exported and can go negative, so it is a TOTAL,
+    not a TOTAL_INCREASING: Home Assistant would book every drop of a
+    TOTAL_INCREASING counter as a meter reset and add the full reading to the
+    long-term statistics. 0 is still treated as "no reading".
+    """
+
+    _attr_state_class = SensorStateClass.TOTAL
+
+    def _update_value(self, val: Any) -> bool:
+        ival = int(val)
+        if ival == 0:
+            return False
+        return super(EnergySensorEntity, self)._update_value(ival)
+
+
 class EnergyStorageSensorEntity(BaseSensorEntity):
     _attr_device_class = SensorDeviceClass.ENERGY_STORAGE
     _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
