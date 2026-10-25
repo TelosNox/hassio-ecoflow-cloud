@@ -4,6 +4,7 @@ paho's connect() and network loop are replaced, everything else is the real
 paho client.
 """
 
+import socket
 import threading
 
 import pytest
@@ -79,3 +80,17 @@ def test_acknowledged_message_is_forgotten(offline_paho):
     client._on_publish(None, None, mid, None, None)  # type: ignore[arg-type]
 
     assert client._EcoflowMQTTClient__unacked == {}  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("error", [socket.gaierror(-3, "Temporary failure in name resolution"), TimeoutError(), ConnectionRefusedError()])
+def test_failed_first_connect_is_retried_by_paho(offline_paho, monkeypatch, error):
+    # tolwi#877, #206: a DNS failure at startup ended the setup without retry
+    def connect(self, *args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(Client, "connect", connect)
+
+    _client()
+
+    # loop_start runs loop_forever(retry_first_connection=True)
+    assert offline_paho["loop_start"] == 1

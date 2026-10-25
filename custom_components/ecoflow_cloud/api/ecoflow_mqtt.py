@@ -70,9 +70,17 @@ class EcoflowMQTTClient:
         )
         try:
             self.__client.connect(self.__mqtt_info.url, self.__mqtt_info.port, keepalive=15)
-            self.__client.loop_start()
-        except TimeoutError:
-            _LOGGER.exception("Initial EcoFlow MQTT connection timed out; entities will retry reconnect from status updates")
+        except OSError as error:
+            # TimeoutError, but also a DNS failure (socket.gaierror) or a refused
+            # connection while the network is not up yet (tolwi#877, #206).
+            # paho's network thread retries the first connect itself.
+            _LOGGER.warning(
+                "Initial EcoFlow MQTT connection to %s:%s failed (%s), retrying in the background",
+                self.__mqtt_info.url,
+                self.__mqtt_info.port,
+                error,
+            )
+        self.__client.loop_start()
 
     def add_topic(self, topic: str) -> None:
         if topic in self.__extra_topics or topic in self.__target_topics():
