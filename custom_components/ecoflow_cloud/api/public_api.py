@@ -23,6 +23,26 @@ _LOGGER = logging.getLogger(__name__)
 # you can exceed this limit very quickly when testing or debugging code.
 
 
+def flatten_sign_params(data: dict[str, Any]) -> str:
+    """The key=value string a JSON body is signed with (general_information.md, steps 1-2)."""
+    items: list[tuple[str, str]] = []
+
+    def expand(prefix: str, value: Any) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                expand(f"{prefix}.{key}" if prefix else str(key), item)
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                expand(f"{prefix}[{index}]", item)
+        elif isinstance(value, bool):
+            items.append((prefix, "true" if value else "false"))
+        else:
+            items.append((prefix, str(value)))
+
+    expand("", data)
+    return "&".join(f"{key}={value}" for key, value in sorted(items))
+
+
 class EcoflowPublicApiClient(EcoflowApiClient):
     _SUCCESS_BY_CODE = True
 
@@ -156,6 +176,43 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         if isinstance(data, dict) and isinstance(data.get("sn"), str) and data["sn"]:
             return data["sn"]
         return None
+
+    async def quota_data(self, device_sn: str, begin_time: str, end_time: str, code: str) -> dict:
+        # stream.md, "Historical data": POST /iot-open/sign/device/quota/data,
+        # body {"sn", "params": {"beginTime", "endTime", "code"}}, times in UTC
+        return await self.post_api(
+            "/device/quota/data",
+            {"sn": device_sn, "params": {"beginTime": begin_time, "endTime": end_time, "code": code}},
+        )
+
+    async def post_api(self, endpoint: str, body: dict[str, Any]) -> dict:
+        if self._session is not None:
+            return await self._post_api(self._session, endpoint, body)
+        async with aiohttp.ClientSession() as session:
+            return await self._post_api(session, endpoint, body)
+
+    async def _post_api(self, session: aiohttp.ClientSession, endpoint: str, body: dict[str, Any]) -> dict:
+        self.nonce = self._gen_nonce()
+        self.timestamp = str(int(time.time() * 1000))
+        # general_information.md, signature steps 2 and 7: a JSON body is
+        # signed like a query string, nested keys expanded to a.b and a[0]
+        sign = self.__gen_sign(flatten_sign_params(body))
+        headers = {
+            "accessKey": self.access_key,
+            "nonce": self.nonce,
+            "timestamp": self.timestamp,
+            "sign": sign,
+            "Content-Type": "application/json;charset=UTF-8",
+        }
+        _LOGGER.debug("Request: POST %s %s.", endpoint, body)
+        async with session.post(
+            f"https://{self.api_domain}/iot-open/sign{endpoint}",
+            headers=headers,
+            json=body,
+        ) as resp:
+            json_resp = await self._get_json_response(resp)
+        _LOGGER.debug("Request: POST %s. Response : %s", endpoint, async_redact_data(json_resp, API_RESPONSE_TO_REDACT))
+        return json_resp
 
     def _set_topic_for(self, sn: str) -> str | None:
         return f"/open/{self.mqtt_info.username}/{sn}/set"

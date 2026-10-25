@@ -96,7 +96,8 @@
                     "diagnostic_mode": "Diagnosemodus",
                     "assume_offline_sec": "Zeit bis zur Offline-Annahme (Sek.)",
                     "verbose_status_mode": "Detaillierter Statusmodus",
-                    "reset_sensors_on_offline": "Sensoren bei Offline-Status zurücksetzen"
+                    "reset_sensors_on_offline": "Sensoren bei Offline-Status zurücksetzen",
+                    "history_backfill_days": "Historie-Nachimport (Tage, STREAM-Systemstatistik)"
                 }
             }
         }
