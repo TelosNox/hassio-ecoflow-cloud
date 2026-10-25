@@ -134,14 +134,23 @@ class EcoflowApiClient(ABC):
         except Exception as error:
             raise EcoflowException(f"Failed to parse response: {resp.text} Error: {error}")
 
-        if response_message.lower() != "success":
-            raw_code = json_resp.get("code")
-            code = None if raw_code is None else str(raw_code)
+        raw_code = json_resp.get("code")
+        code = None if raw_code is None else str(raw_code)
+        if not self._is_success(code, str(response_message)):
             if code in PUBLIC_API_AUTH_ERROR_CODES:
                 raise EcoflowAuthException(f"{response_message}", code=code)
             raise EcoflowException(f"{response_message}", code=code)
 
         return json_resp
+
+    # The public API documents success as code "0" ("Response Body": "code ...
+    # 0: success"); the app API is undocumented and keeps the message check.
+    _SUCCESS_BY_CODE = False
+
+    def _is_success(self, code: str | None, message: str) -> bool:
+        if self._SUCCESS_BY_CODE and code is not None:
+            return code == "0"
+        return message.lower() == "success"
 
     def send_get_message(self, device_sn: str, command: dict | Message):
         if isinstance(command, dict):

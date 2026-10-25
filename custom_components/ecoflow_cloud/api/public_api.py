@@ -24,6 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class EcoflowPublicApiClient(EcoflowApiClient):
+    _SUCCESS_BY_CODE = True
+
     def __init__(
         self,
         api_domain: str,

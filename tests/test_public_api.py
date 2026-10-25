@@ -6,7 +6,9 @@ Reference: EcoFlow IoT Developer Platform, "General information" -
 
 import asyncio
 
-from custom_components.ecoflow_cloud.api import public_api
+import pytest
+
+from custom_components.ecoflow_cloud.api import EcoflowAuthException, EcoflowException, public_api
 from custom_components.ecoflow_cloud.api.public_api import EcoflowPublicApiClient
 
 
@@ -59,8 +61,11 @@ class _FakeResponse:
     status = 200
     reason = "OK"
 
+    def __init__(self, body=None):
+        self.body = body or {"code": "0", "message": "Success", "data": {"sn": "BK31"}}
+
     async def json(self):
-        return {"code": "0", "message": "Success", "data": {"sn": "BK31"}}
+        return self.body
 
 
 class _FakeGet:
@@ -93,3 +98,29 @@ def test_calls_reuse_the_given_session(monkeypatch):
     asyncio.run(client.call_api("/device/system/main/sn", {"sn": "BK61"}))
 
     assert session.urls == ["https://api-e.ecoflow.com/iot-open/sign/device/system/main/sn?sn=BK61"] * 2
+
+
+def _parse(client, body):
+    return asyncio.run(client._get_json_response(_FakeResponse(body)))  # type: ignore[arg-type]
+
+
+def test_public_success_is_code_zero():
+    # every endpoint's Response Body: "code ... 0: success"
+    client = _client()
+    assert _parse(client, {"code": "0", "message": "Success"})["code"] == "0"
+    assert _parse(client, {"code": 0, "message": "ok"})["code"] == 0
+
+    with pytest.raises(EcoflowException) as error:
+        _parse(client, {"code": "1006", "message": "Success"})
+    assert error.value.code == "1006"
+    with pytest.raises(EcoflowAuthException):
+        _parse(client, {"code": "8513", "message": "accessKey is invalid"})
+
+
+def test_private_api_keeps_the_message_check():
+    from custom_components.ecoflow_cloud.api.private_api import EcoflowPrivateApiClient
+
+    client = EcoflowPrivateApiClient("api.ecoflow.com", "user", "pw", "Home")
+    assert _parse(client, {"code": "1006", "message": "Success"})
+    with pytest.raises(EcoflowException):
+        _parse(client, {"code": "0", "message": "ok"})
