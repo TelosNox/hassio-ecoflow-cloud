@@ -15,6 +15,7 @@ from custom_components.ecoflow_cloud.select import DictSelectEntity, TimeoutDict
 from custom_components.ecoflow_cloud.sensor import (
     # AmpSensorEntity,
     CapacitySensorEntity,
+    FrequencySensorEntity,
     # CyclesSensorEntity,
     # InAmpSensorEntity,
     # InVoltSensorEntity,
@@ -89,7 +90,7 @@ class DeltaPro3(BaseDevice):
             OutWattsSensorEntity(client, self, "powGet4p81", "4P8 Extra Battery Port 1 Power", False, True),
             OutWattsSensorEntity(client, self, "powGet4p82", "4P8 Extra Battery Port 2 Power", False, True),
             # OutWattsSensorEntity(client, self, "acOutFreq", "AC Output Frequency"),
-            LevelSensorEntity(client, self, "plugInInfoAcInFeq", "AC Input Frequency"),
+            FrequencySensorEntity(client, self, "plugInInfoAcInFeq", "AC Input Frequency"),
             QuotaStatusSensorEntity(client, self),
         ]
 
