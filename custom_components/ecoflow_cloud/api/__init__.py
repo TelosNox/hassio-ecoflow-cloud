@@ -149,6 +149,10 @@ class EcoflowApiClient(ABC):
             command = JSONMessage(command)
 
         self.devices[device_sn].data.update_to_target_state(mqtt_state)
+        # Every write is logged, so a setting that changed "by itself" can be
+        # traced to a command from this integration or ruled out (tolwi#819, #922).
+        # The payload carries the SN and the command, no credentials.
+        _LOGGER.info("Sending set command for %s: %s", device_sn, command.describe())
         self.mqtt_client.publish(self.devices[device_sn].device_info.set_topic, command.to_mqtt_payload())
 
     def start(self):

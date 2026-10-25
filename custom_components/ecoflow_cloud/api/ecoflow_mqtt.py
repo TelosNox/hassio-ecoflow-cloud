@@ -139,7 +139,7 @@ class EcoflowMQTTClient:
     def publish(self, topic: str, message: PayloadType) -> None:
         try:
             info = self.__client.publish(topic, message, 1)
-            _LOGGER.debug("Sending " + str(message) + " :" + str(info) + "(" + str(info.is_published()) + ")")
+            _LOGGER.debug("Published mid %s, rc %s", info.mid, info.rc)
         except RuntimeError as error:
             _LOGGER.error("Error on topic %s and message %s: %s", topic, message, error)
         except Exception as error:
