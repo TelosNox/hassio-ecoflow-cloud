@@ -431,7 +431,8 @@ class DeltaPro(BaseDevice):
                         "cmdSet": 32,
                         "id": 94,
                         "isConfig": value,
-                        "bpPowerSoc": value * 50,
+                        # keep the configured level; value * 50 reset it to 50 % on every enable
+                        "bpPowerSoc": int(params.get("pd.bppowerSoc") or 50) if value else 0,
                         "minDsgSoc": 0,
                         "maxChgSoc": 0,
                     },
