@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -8,7 +9,10 @@ from aiohttp import ClientResponse
 from attr import dataclass
 from homeassistant.components.diagnostics import async_redact_data
 
+from homeassistant.util import dt
+
 from ..device_data import DeviceData
+from .commands import PendingCommand, PendingCommands, evaluate_set_reply
 from .message import JSONMessage, Message
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,6 +55,7 @@ class EcoflowApiClient(ABC):
         self._mqtt_reconnect_count = 0
         # set by the integration, the only layer that can reach hass and the config entry
         self.on_auth_failure: Callable[[], None] | None = None
+        self.pending_commands = PendingCommands()
 
     @abstractmethod
     async def login(self):
@@ -168,6 +173,8 @@ class EcoflowApiClient(ABC):
             )
             return
 
+        captured = device.data.capture_target_state(mqtt_state) if device.evaluates_set_replies() else None
+        sent_at = dt.utcnow()
         device.data.update_to_target_state(mqtt_state)
         # Every write is logged, so a setting that changed "by itself" can be
         # traced to a command from this integration or ruled out (tolwi#819, #922).
@@ -177,6 +184,60 @@ class EcoflowApiClient(ABC):
         else:
             _LOGGER.info("Sending set command for %s: %s", device_sn, command.describe())
         self.mqtt_client.publish(topic, command.to_mqtt_payload())
+
+        if captured is not None and command.message_id is not None:
+            routed = target_sn != device.device_info.sn
+
+            def on_failure(reason: str) -> None:
+                rolled_back = device.data.rollback_target_state(captured, sent_at)
+                if rolled_back:
+                    _LOGGER.warning("Restored the previous value of %s on %s", ", ".join(rolled_back), device_sn)
+                if routed and device.main_sn_cache is not None:
+                    # the master role may have moved to another unit
+                    device.main_sn_cache.invalidate()
+
+            self.pending_commands.add(
+                PendingCommand(command.message_id, device_sn, target_sn, command.describe(), on_failure)
+            )
+
+    def on_set_reply(self, payload: bytes) -> None:
+        """Called for every message on a set_reply topic."""
+        if len(self.pending_commands) == 0:
+            return
+        try:
+            reply = json.loads(payload)
+        except ValueError:
+            return
+        if not isinstance(reply, dict):
+            return
+        command = self.pending_commands.match(reply)
+        if command is None:
+            return
+        reason = evaluate_set_reply(reply)
+        if reason is None:
+            _LOGGER.info("Set command %s for %s accepted by %s", command.message_id, command.device_sn, command.target_sn)
+            return
+        _LOGGER.warning(
+            "Set command %s for %s rejected by %s (%s): %s",
+            command.message_id,
+            command.device_sn,
+            command.target_sn,
+            reason,
+            command.description,
+        )
+        command.on_failure(reason)
+
+    def expire_pending_commands(self) -> None:
+        for command in self.pending_commands.expire():
+            _LOGGER.warning(
+                "No set_reply from %s for set command %s of %s within %d s: %s",
+                command.target_sn,
+                command.message_id,
+                command.device_sn,
+                self.pending_commands.timeout_sec,
+                command.description,
+            )
+            command.on_failure("no reply")
 
     def _set_topic_for(self, sn: str) -> str | None:
         """Set topic of another device of this account; None if the API has no such topic."""
@@ -223,6 +284,8 @@ class EcoflowApiClient(ABC):
 
         self.mqtt_client = EcoflowMQTTClient(self.mqtt_info, self.devices)
         self.mqtt_client.on_auth_failure = self.on_auth_failure
+        self.mqtt_client.on_set_reply = self.on_set_reply
+        self.mqtt_client.on_message_processed = self.expire_pending_commands
 
     def schedule_mqtt_reconnect(self, data_stale: bool = False, cooldown_sec: int = 60) -> int | None:
         """Return the new reconnect count if a reconnect should run, else None.

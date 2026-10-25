@@ -54,6 +54,11 @@ class StreamAC(BaseDevice):
             return stream_command_target_sn(command.data, self.device_info.sn, self._main_sn.sn)
         return self.device_info.sn
 
+    def evaluates_set_replies(self) -> bool:
+        # stream.md "Set & Set Reply": every command has needAck true and the
+        # reply carries the same id and data.configOk
+        return True
+
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         return [
             # "accuChgCap": 198511,

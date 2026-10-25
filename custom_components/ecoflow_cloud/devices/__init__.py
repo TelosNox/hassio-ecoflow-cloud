@@ -102,6 +102,11 @@ class BaseDevice(ABC):
     def set_command_target_sn(self, command: Message) -> str:
         return self.device_info.sn
 
+    def evaluates_set_replies(self) -> bool:
+        """Opt-in: match set_reply to the command, roll the optimistic state back on a
+        rejection or no answer. Only for devices whose reply format is documented."""
+        return False
+
     async def async_restore_state(self):
         """Restore persisted device state on startup. Override in subclasses."""
 

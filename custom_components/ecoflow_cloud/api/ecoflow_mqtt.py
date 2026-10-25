@@ -34,6 +34,8 @@ class EcoflowMQTTClient:
         self.connected = False
         self.auth_failed = False
         self.on_auth_failure: Callable[[], None] | None = None
+        self.on_set_reply: Callable[[bytes], None] | None = None
+        self.on_message_processed: Callable[[], None] | None = None
         self.__mqtt_info = mqtt_info
         self.__devices: dict[str, BaseDevice] = devices
         # topics outside the devices' own, e.g. the set_reply of a STREAM system's main unit
@@ -169,6 +171,14 @@ class EcoflowMQTTClient:
             _LOGGER.error(f"UnicodeDecodeError: {error}. Ignoring message and waiting for the next one.")
         except Exception:
             _LOGGER.error("Unexpected error processing MQTT message on topic %s", message.topic, exc_info=True)
+
+        try:
+            if self.on_set_reply is not None and message.topic.endswith("set_reply"):
+                self.on_set_reply(message.payload)
+            if self.on_message_processed is not None:
+                self.on_message_processed()
+        except Exception:
+            _LOGGER.error("Unexpected error evaluating a set reply on topic %s", message.topic, exc_info=True)
 
     def stop(self):
         self.__client.unsubscribe(self.__target_topics())

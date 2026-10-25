@@ -774,6 +774,9 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
         if self._schedule_mqtt_reconnect():
             changed = True
 
+        # set_reply timeouts also expire here when no MQTT message arrives
+        self._client.expire_pending_commands()
+
         main_sn = self._device.main_sn_cache
         if main_sn is not None and main_sn.due():
             self.hass.async_create_background_task(
