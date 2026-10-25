@@ -179,7 +179,8 @@ class PowerStream(BaseInternalDevice):
             DeciwattsSensorEntity(client, self, "20_1.batInputWatts", "Battery Input Watts"),
             DecivoltSensorEntity(client, self, "20_1.batInputVolt", "Battery Input Potential"),
             DecivoltSensorEntity(client, self, "20_1.batOpVolt", "Battery Op Potential"),
-            MilliampSensorEntity(client, self, "20_1.batInputCur", "Battery Input Current"),
+            # 0.1 A, positive = discharging (doc: power_stream_micro_inverter.md)
+            DeciampSensorEntity(client, self, "20_1.batInputCur", "Battery Input Current"),
             DecicelsiusSensorEntity(client, self, "20_1.batTemp", "Battery Temperature"),
             RemainSensorEntity(client, self, "20_1.chgRemainTime", "Charge Time"),
             RemainSensorEntity(client, self, "20_1.dsgRemainTime", "Discharge Time"),
