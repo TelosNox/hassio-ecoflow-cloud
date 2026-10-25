@@ -604,7 +604,7 @@ class PowerKit(BaseDevice):
                     self,
                     "NotExisting",
                     const.AC_CHARGING_POWER,
-                    0,
+                    1,  # documented range of acCurrMaxSet is 1-23 A
                     16,  # This is not the real limit of the powerkit, but because it has a normal 230V plug, we don't allow here to go over 16A because you will maybe frie your socket
                     lambda value: {
                         "id": 123456789,
