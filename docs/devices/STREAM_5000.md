@@ -12,6 +12,11 @@
 - Battery Net Power (`batteryNetPower`)
 - AC Grid Connection Power (`acGridPower`)
 - Battery Power (`bpPower`)
+- Power PV Sum (`pvPower`)
+- Power PV 1 (`pv1Power`)
+- Power PV 2 (`pv2Power`)
+- Power PV 3 (`pv3Power`)
+- Power PV 4 (`pv4Power`)
 - Charge Power Limit (`maxChgPow`)   _(disabled)_
 - Max Discharge Power (`maxDsgPow`)   _(disabled)_
 - Feed-in Power Max (`feedGridModePowMax`)   _(disabled)_

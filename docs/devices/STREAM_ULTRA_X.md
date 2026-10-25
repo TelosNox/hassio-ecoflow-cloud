@@ -23,10 +23,19 @@
 - Min Cell Volts (`minCellVol`)   _(disabled)_
 - Out Power (`outputWatts`)   _(disabled)_
 - System Battery Power (`powGetBpCms`)
-- Power PV 1 (`powGetPv`)   _(auto)_
-- Power PV 2 (`powGetPv2`)   _(auto)_
-- Power PV 3 (`powGetPv3`)   _(auto)_
-- Power PV 4 (`powGetPv4`)   _(auto)_
+- Power PV 1 (`powGetPv`)
+- Power PV 2 (`powGetPv2`)
+- Power PV 3 (`powGetPv3`)
+- Power PV 4 (`powGetPv4`)
+- Power PV1 Volts (`inVolPv1`)   _(disabled)_
+- Power PV2 Volts (`inVolPv2`)   _(disabled)_
+- Power PV3 Volts (`inVolPv3`)   _(disabled)_
+- Power PV4 Volts (`inVolPv4`)   _(disabled)_
+- Power PV1 In Amps (`inAmpPv1`)   _(disabled)_
+- Power PV2 In Amps (`inAmpPv2`)   _(disabled)_
+- Power PV3 In Amps (`inAmpPv3`)   _(disabled)_
+- Power PV4 In Amps (`inAmpPv4`)   _(disabled)_
+- Power PV Total (`pvWattsTotal`) (energy:  _[Device Name]_ PV Total Energy)
 - Power PV Sum (`powGetPvSum`)
 - Power SCHUKO1 (`powGetSchuko1`)   _(auto)_
 - Power SCHUKO2 (`powGetSchuko2`)   _(auto)_
