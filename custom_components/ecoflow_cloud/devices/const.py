@@ -438,6 +438,33 @@ STREAM_WIFI_RSSI = "WiFi Signal Strength"
 STREAM_FEED_GRID_MODE_POW_LIMIT = "Feed-in Power Limit"
 STREAM_FEED_GRID_MODE_POW_MAX = "Feed-in Power Max"
 
+# Stream AC 5000 (SN prefix "ES22") and STREAM 5000 (SN prefix "ES21", same
+# family with PV inputs), internal/App API. PV strings reuse STREAM_POWER_PV_*.
+# Signed battery power: >0 charging, <0 discharging. Not the grid port: on a PV
+# unit it is PV minus what leaves through the AC grid connection.
+STREAM_AC5000_BATTERY_NET_POWER = "Battery Net Power"
+# >0 out of the unit to the house, <0 drawn from the grid.
+STREAM_AC5000_AC_GRID_POWER = "AC Grid Connection Power"
+STREAM_AC5000_BATTERY_POWER = "Battery Power"
+# Whether cmsBattFullEnergy is per unit or system-wide on this family is not established yet.
+STREAM_AC5000_STORED_ENERGY = "Stored Energy"
+# Currently-allowed charge power; tapers as the pack fills, not a fixed rating.
+STREAM_AC5000_CHARGE_POWER_LIMIT = "Charge Power Limit"
+STREAM_AC5000_MAX_DISCHARGE_POWER = "Max Discharge Power"
+STREAM_AC5000_BMS_BATTERY_LEVEL = "Battery Level (BMS)"
+# The raw pack scale, which reads above the app-facing level near empty.
+STREAM_AC5000_PACK_BATTERY_LEVEL = "Battery Level (pack)"
+# Off when the P1 link is down and every Power Grid reading is stale.
+STREAM_AC5000_METER_LINK = "P1 Meter Link"
+# Controls. Names follow the EcoFlow app's own wording ("net power in/out").
+STREAM_AC5000_NET_POWER_IN = "Net Power In Limit"
+STREAM_AC5000_NET_POWER_OUT = "Net Power Out Limit"
+STREAM_AC5000_AC_OUTPUT = "AC Output"
+STREAM_AC5000_XBOOST = "X-Boost"
+STREAM_AC5000_UPS = "UPS Mode"
+STREAM_AC5000_WORK_MODE = "Work Mode"
+STREAM_AC5000_WORK_MODE_OPTIONS = {"Self-powered": 0, "Intelligent": 1, "Scheduled": 2}
+
 ACCU_CHARGE_CAP = "Cumulative Capacity Charge (mAh)"
 ACCU_CHARGE_ENERGY = "Cumulative Energy Charge (Wh)"
 ACCU_DISCHARGE_CAP = "Cumulative Capacity Discharge (mAh)"
