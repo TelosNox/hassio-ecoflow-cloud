@@ -9,6 +9,7 @@
             "reconfigure_successful": "Ponowna konfiguracja się powiodła",
             "do_reconfigure_existing": "Grupa urządzeń o tej nazwie już istnieje. Zamiast tego skonfiguruj ponownie istniejący wpis.",
             "no_device_to_add": "Brak nowych urządzeń do dodania: wszystkie urządzenia z tego konta zostały już dodane.",
+            "no_devices_found": "EcoFlow nie zwraca żadnych urządzeń dla tych kluczy deweloperskich. Wyświetlane są tylko urządzenia powiązane z kontem EcoFlow, na którym utworzono klucze; urządzenia udostępnione temu kontu nie są wyświetlane.",
             "remove_last_device": "Nie można usunąć ostatniego urządzenia. Zamiast tego usuń wpis integracji.",
             "unknown": "Nieoczekiwany błąd"
         },

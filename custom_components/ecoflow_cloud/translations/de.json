@@ -9,6 +9,7 @@
             "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
             "do_reconfigure_existing": "Eine Gerätegruppe mit diesem Namen existiert bereits. Stattdessen den vorhandenen Eintrag neu konfigurieren.",
             "no_device_to_add": "Keine neuen Geräte zum Hinzufügen: Alle Geräte dieses Kontos wurden bereits hinzugefügt.",
+            "no_devices_found": "EcoFlow liefert für diese Entwickler-Schlüssel keine Geräte. Aufgelistet werden nur Geräte, die an das EcoFlow-Konto gebunden sind, mit dem die Schlüssel erstellt wurden; mit diesem Konto geteilte Geräte nicht.",
             "remove_last_device": "Das letzte Gerät kann nicht entfernt werden. Stattdessen den Integrationseintrag löschen.",
             "unknown": "Unerwarteter Fehler"
         },

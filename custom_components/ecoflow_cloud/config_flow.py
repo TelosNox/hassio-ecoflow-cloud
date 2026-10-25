@@ -460,6 +460,11 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
                 _LOGGER.exception("Unexpected exception in fetch device action")
                 return self.async_abort(reason="unknown")
 
+            if not self.cloud_devices:
+                # not "every device has been added": the account lists none at all
+                # (tolwi#598, #791: keys of another account, or devices only shared)
+                return self.async_abort(reason="no_devices_found")
+
             target_devices = [k for k, v in self.cloud_devices.items() if k not in self.local_devices]
             if len(target_devices) < 1:
                 return self.async_abort(reason="no_device_to_add")

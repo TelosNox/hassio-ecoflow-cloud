@@ -9,6 +9,7 @@
             "reconfigure_successful": "La reconfiguration a réussi",
             "do_reconfigure_existing": "Un groupe d'appareils portant ce nom existe déjà. Reconfigurez plutôt l'entrée existante.",
             "no_device_to_add": "Aucun nouvel appareil à ajouter : tous les appareils de ce compte ont déjà été ajoutés.",
+            "no_devices_found": "EcoFlow ne renvoie aucun appareil pour ces clés développeur. Seuls les appareils liés au compte EcoFlow ayant créé les clés sont listés ; les appareils partagés avec ce compte ne le sont pas.",
             "remove_last_device": "Le dernier appareil ne peut pas être supprimé. Supprimez plutôt l'entrée d'intégration.",
             "unknown": "Erreur inattendue"
         },
