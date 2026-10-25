@@ -101,4 +101,7 @@ class SmartMeter(BaseDevice):
         return res
 
     def _status_sensor(self, client: EcoflowApiClient) -> QuotaStatusSensorEntity:
-        return QuotaStatusSensorEntity(client, self)
+        # The meter reports every few seconds, so a silent meter has usually
+        # hit the same cloud-side stall as StreamAC (tolwi#654). quota/all
+        # never returns data for it, so the poll alone cannot recover it.
+        return QuotaStatusSensorEntity(client, self, reconnect_when_stale=True)

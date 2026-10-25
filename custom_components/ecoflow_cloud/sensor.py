@@ -57,6 +57,9 @@ from .entities import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Upper bound for the doubling wait between stale reconnects of one silence
+STALE_RECONNECT_MAX_WAIT_SEC = 3600
+
 # HA 2025.8 added a `hass` argument to IntegrationSensor.__init__ and 2026.8 removed it again
 _INTEGRATION_SENSOR_TAKES_HASS = "hass" in inspect.signature(IntegrationSensor.__init__).parameters
 
@@ -725,6 +728,11 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
         # cloud-side stall reconnect on stale data alone.
         self._reconnect_when_stale = reconnect_when_stale
         self._reconnect_since = dt.utcnow()
+        # Stale reconnects within the current silence, cleared by the next
+        # telemetry. Each one doubles the wait before the next, capped at an
+        # hour: a reconnect that did not take is retried, a device that is
+        # really offline is not reconnected every assume_offline_sec forever.
+        self._stale_reconnects = 0
         self._last_poll = dt.utcnow().replace(year=2000, month=1, day=1, hour=0, minute=0, second=0)
         self._last_scheduled = dt.utcnow()
         self._poll_count = 0
@@ -779,15 +787,17 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
 
     def _schedule_mqtt_reconnect(self) -> bool:
         threshold = self._tracker.assume_offline_sec
+        last_telemetry = self._tracker.last_telemetry_time
 
-        # _reconnect_since covers the two moments where last_data_time is no
+        if last_telemetry > self._reconnect_since:
+            self._stale_reconnects = 0
+
+        # _reconnect_since covers the two moments where last_telemetry is no
         # reference -- just after setup and just after a reconnect -- which
         # would otherwise look infinitely stale and reconnect straight away.
-        reference = max(self._tracker.last_data_time, self._reconnect_since)
-        data_stale = (
-            self._reconnect_when_stale
-            and (dt.utcnow() - reference).total_seconds() >= threshold
-        )
+        reference = max(last_telemetry, self._reconnect_since)
+        wait = min(threshold * 2**self._stale_reconnects, STALE_RECONNECT_MAX_WAIT_SEC)
+        data_stale = self._reconnect_when_stale and (dt.utcnow() - reference).total_seconds() >= wait
 
         reconnect_count = self._client.schedule_mqtt_reconnect(
             data_stale=data_stale, cooldown_sec=threshold
@@ -795,6 +805,8 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
         if reconnect_count is None:
             return False
 
+        if data_stale:
+            self._stale_reconnects += 1
         self._reconnect_since = dt.utcnow()
         self._attrs[ATTR_STATUS_RECONNECTS] = reconnect_count
         self.hass.async_create_background_task(
@@ -837,8 +849,9 @@ class QuotaStatusSensorEntity(StatusSensorEntity):
         device: BaseDevice,
         title: str = "Status",
         key: str = "status",
+        reconnect_when_stale: bool = False,
     ):
-        super().__init__(client, device, title, key, poll_when_silent=True)
+        super().__init__(client, device, title, key, poll_when_silent=True, reconnect_when_stale=reconnect_when_stale)
 
 
 class QuotaScheduledStatusSensorEntity(QuotaStatusSensorEntity):
