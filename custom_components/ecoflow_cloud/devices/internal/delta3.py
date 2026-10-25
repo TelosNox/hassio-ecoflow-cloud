@@ -876,7 +876,7 @@ class Delta3(BaseInternalDevice):
                 try:
                     msg_bms_heartbeat = delta3_pb2.Delta3BMSHeartBeatReport()
                     msg_bms_heartbeat.ParseFromString(pdata)
-                    return self._protobuf_to_dict(msg_bms_heartbeat)
+                    return self._main_pack_only(self._protobuf_to_dict(msg_bms_heartbeat))
                 except Exception as e:
                     _LOGGER.debug(f"Failed to decode as BMSHeartBeatReport (cmdFunc={cmd_func}, cmdId={cmd_id}): {e}")
                     return {}
@@ -887,7 +887,7 @@ class Delta3(BaseInternalDevice):
                 msg_bms_heartbeat.ParseFromString(pdata)
                 result = self._protobuf_to_dict(msg_bms_heartbeat)
                 if "cycles" in result or "accu_chg_energy" in result or "accu_dsg_energy" in result:
-                    return result
+                    return self._main_pack_only(result)
             except Exception as e:
                 _LOGGER.debug("Failed to decode as fallback BMSHeartBeatReport: %s", e)
 
@@ -895,6 +895,21 @@ class Delta3(BaseInternalDevice):
         except Exception as e:
             _LOGGER.debug(f"Message decode error for cmdFunc={cmd_func}, cmdId={cmd_id}: {e}")
             return {}
+
+    @staticmethod
+    def _main_pack_only(report: dict[str, Any]) -> dict[str, Any]:
+        """Drop a BMS report from an extra battery.
+
+        ``num`` is the pack: 0 the built-in battery, 1 and up an extra battery.
+        Both write the same flat keys, so with an extra battery attached the
+        readings flipped between the two packs and the lifetime counters
+        (cycles, accu_*_energy) jumped, which TOTAL_INCREASING books as resets
+        (shuette42/ecoflow-energy-ha#304: DELTA 3 Plus, pack 0 at 12.990 kWh
+        and pack 1 at 11.147 kWh in one get-all reply).
+        """
+        if report.get("num", 0) != 0:
+            return {}
+        return report
 
     def _is_bms_heartbeat(self, cmd_func: int, cmd_id: int) -> bool:
         """Return True if the pair maps to a BMSHeartBeatReport message."""
