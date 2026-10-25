@@ -6,11 +6,12 @@ import time
 from typing import Any
 
 import aiohttp
+from homeassistant.components.diagnostics import async_redact_data
 
 from custom_components.ecoflow_cloud.devices.data_holder import PreparedData
 
 from ..devices import EcoflowDeviceInfo
-from . import EcoflowApiClient
+from . import API_RESPONSE_TO_REDACT, EcoflowApiClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class EcoflowPublicApiClient(EcoflowApiClient):
                 "Request: %s %s. Response : %s",
                 str(endpoint),
                 str(params_str),
-                str(json_resp),
+                async_redact_data(json_resp, API_RESPONSE_TO_REDACT),
             )
             return json_resp
 

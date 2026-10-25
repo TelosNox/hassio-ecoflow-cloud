@@ -2,15 +2,18 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Final
 
 from aiohttp import ClientResponse
 from attr import dataclass
+from homeassistant.components.diagnostics import async_redact_data
 
 from ..device_data import DeviceData
 from .message import JSONMessage, Message
 
 _LOGGER = logging.getLogger(__name__)
+
+API_RESPONSE_TO_REDACT: Final = {"token", "email", "certificatePassword"}
 
 
 # EcoFlow returns 8513 both for a bad access key and for one issued in another region
@@ -102,7 +105,7 @@ class EcoflowApiClient(ABC):
         self.devices.pop(device.device_data.sn, None)
 
     def _accept_mqqt_certification(self, resp_json: dict):
-        _LOGGER.info(f"Received MQTT credentials: {resp_json}")
+        _LOGGER.debug("Received MQTT credentials: %s", async_redact_data(resp_json, API_RESPONSE_TO_REDACT))
         try:
             mqtt_url = resp_json["data"]["url"]
             mqtt_port = int(resp_json["data"]["port"])
@@ -110,7 +113,7 @@ class EcoflowApiClient(ABC):
             mqtt_password = resp_json["data"]["certificatePassword"]
             self.mqtt_info = EcoflowMqttInfo(mqtt_url, mqtt_port, mqtt_username, mqtt_password)
         except KeyError as key:
-            raise EcoflowException(f"Failed to extract key {key} from {resp_json}")
+            raise EcoflowException(f"Failed to extract key {key} from MQTT credentials response")
 
         _LOGGER.info(f"Successfully extracted account: {self.mqtt_info.username}")
 
