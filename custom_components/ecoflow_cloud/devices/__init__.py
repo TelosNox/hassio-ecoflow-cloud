@@ -181,18 +181,17 @@ class BaseDevice(ABC):
         return PreparedData(None, None, data)
 
     def _prepare_data(self, raw_data: bytes) -> dict[str, Any]:
+        payload = raw_data.decode("utf-8", errors="ignore")
         try:
-            try:
-                payload = raw_data.decode("utf-8", errors="ignore")
-                return json.loads(payload)
-            except UnicodeDecodeError as error:
-                _LOGGER.warning(f"UnicodeDecodeError: {error}. Trying to load json.")
-                return json.loads(raw_data)
-            except Exception as error:
-                _LOGGER.warning(f"Exception: {error}. Trying to load json.")
-                return json.loads(raw_data)
-        except Exception as error1:
-            _LOGGER.error(f"constant: {error1}. Ignoring message and waiting for the next one.")
+            return json.loads(payload)
+        except ValueError as error:
+            if payload.lstrip().startswith("{"):
+                _LOGGER.warning("Ignoring a malformed JSON message for %s: %s", self.device_info.sn, error)
+            else:
+                # binary (protobuf) frames reach JSON device classes too, e.g. on
+                # the set/get topics; one line each at WARNING and ERROR flooded
+                # the log (tolwi#210, #872)
+                _LOGGER.debug("Ignoring a non-JSON message of %d bytes for %s", len(raw_data), self.device_info.sn)
             return {}
 
 
