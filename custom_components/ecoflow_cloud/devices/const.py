@@ -446,6 +446,8 @@ STREAM_AC5000_BATTERY_NET_POWER = "Battery Net Power"
 # >0 out of the unit to the house, <0 drawn from the grid.
 STREAM_AC5000_AC_GRID_POWER = "AC Grid Connection Power"
 STREAM_AC5000_BATTERY_POWER = "Battery Power"
+# Whether cmsBattFullEnergy is per unit or system-wide on this family is not established yet.
+STREAM_AC5000_STORED_ENERGY = "Stored Energy"
 # Currently-allowed charge power; tapers as the pack fills, not a fixed rating.
 STREAM_AC5000_CHARGE_POWER_LIMIT = "Charge Power Limit"
 STREAM_AC5000_MAX_DISCHARGE_POWER = "Max Discharge Power"

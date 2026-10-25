@@ -252,11 +252,11 @@ class StreamAC5000(BaseInternalDevice):
         return [
             # --- battery ------------------------------------------------
             LevelSensorEntity(client, self, "soc", const.STREAM_BATTERY_LEVEL),
-            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_POWER_BATTERY_SOC, False),
+            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_BATTERY_LEVEL_PRECISE, False),
             LevelSensorEntity(client, self, "bmsBattSoc", const.STREAM_AC5000_BMS_BATTERY_LEVEL, False),
             LevelSensorEntity(client, self, _KEY_PACK_SOC, const.STREAM_AC5000_PACK_BATTERY_LEVEL, False),
             StoredEnergyFromSocSensorEntity(
-                client, self, "cmsBattFullEnergy", "f32ShowSoc", const.STREAM_STORED_ENERGY
+                client, self, "cmsBattFullEnergy", "f32ShowSoc", const.STREAM_AC5000_STORED_ENERGY
             ),
             # cmsMaxChgSoc / cmsMinDsgSoc are writable, so they live in numbers().
             # RemainSensorEntity clamps the device's 5939 "unknown" sentinel to 0.
