@@ -7,12 +7,12 @@
 - Cumulative Energy Discharge (Wh) (`accuDsgEnergy`)   _(disabled)_
 - Charge Remaining Time (`bmsChgRemTime`)   _(disabled)_
 - Discharge Remaining Time (`bmsDsgRemTime`)
-- Stored Energy (`storedEnergy_cmsBattFullEnergy`)   _(auto)_
+- System Stored Energy (`storedEnergy_cmsBattFullEnergy`)   _(auto)_
 - Max Charge Level (`cmsMaxChgSoc`)
 - Min Discharge Level (`cmsMinDsgSoc`)
 - Cycles (`cycles`)   _(disabled)_
 - Design Capacity (`designCap`)   _(disabled)_
-- Power Battery SOC (`f32ShowSoc`)
+- Battery Level (Precise) (`f32ShowSoc`)
 - Full Capacity (`fullCap`)   _(disabled)_
 - Power AC (`gridConnectionPower`)
 - Power Volts (`gridConnectionVol`)   _(disabled)_

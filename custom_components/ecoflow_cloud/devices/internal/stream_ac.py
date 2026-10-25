@@ -10,6 +10,9 @@ from homeassistant.util import utcnow
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.devices import BaseInternalDevice, const
+from custom_components.ecoflow_cloud.devices.public.stream_pv_helpers import (
+    StreamPvTotalWattsSensorEntity,
+)
 from custom_components.ecoflow_cloud.sensor import (
     AmpSensorEntity,
     BatteryLimitSensorEntity,
@@ -86,6 +89,14 @@ class StreamAC(BaseInternalDevice):
             AmpSensorEntity(client, self, "inAmpPv2", const.STREAM_IN_AMPS_PV_2, False),
             AmpSensorEntity(client, self, "inAmpPv3", const.STREAM_IN_AMPS_PV_3, False),
             AmpSensorEntity(client, self, "inAmpPv4", const.STREAM_IN_AMPS_PV_4, False),
+            # Per-unit PV total; energy is an HA-side Riemann sum, so it is
+            # disabled by default (see the public StreamAC).
+            StreamPvTotalWattsSensorEntity(
+                client,
+                self,
+                [(None, None, "powGetPv"), (None, None, "powGetPv2"), (None, None, "powGetPv3"), (None, None, "powGetPv4")],
+                const.STREAM_POWER_PV_TOTAL,
+            ).with_energy(enabled_default=False, energy_title=const.STREAM_PV_TOTAL_ENERGY),
         ]
 
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
@@ -152,7 +163,7 @@ class StreamAC(BaseInternalDevice):
             # the source fields never arrive, while still surfacing on Stream
             # models that do report them.
             StoredEnergyFromSocSensorEntity(
-                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_STORED_ENERGY, False, True
+                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_SYSTEM_STORED_ENERGY, False, True
             ),
             # "cmsBattSoh": 100.0,
             # "cmsBmsRunState": 1,
@@ -190,7 +201,7 @@ class StreamAC(BaseInternalDevice):
             # Precise battery SoC (float). Stream AC emits this top-level; Stream
             # Ultra / Ultra X carry it inside the nested Champ_cmd21_2 message
             # (field 15), normalised onto this key by _normalize_champ_fields().
-            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_POWER_BATTERY_SOC),
+            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_BATTERY_LEVEL_PRECISE),
             # "feedGridMode": 2,
             # "feedGridModePowLimit": 800,
             # "feedGridModePowMax": 800,

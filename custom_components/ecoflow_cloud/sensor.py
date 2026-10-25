@@ -465,10 +465,12 @@ class WattsSensorEntity(BaseSensorEntity):
         )
         self._energy_enabled = False
         self._energy_enabled_default = True
+        self._energy_title: str | None = None
 
-    def with_energy(self, enabled_default: bool = True):
+    def with_energy(self, enabled_default: bool = True, energy_title: str | None = None):
         self._energy_enabled = True
         self._energy_enabled_default = enabled_default
+        self._energy_title = energy_title
         return self
 
     def energy_enabled(self):
@@ -477,7 +479,7 @@ class WattsSensorEntity(BaseSensorEntity):
     def energy_sensor(self):
         if not self._energy_enabled:
             return None
-        return IntegralEnergySensorEntity(self, self._energy_enabled_default)
+        return IntegralEnergySensorEntity(self, self._energy_enabled_default, self._energy_title)
 
 
 class EnergySensorEntity(BaseSensorEntity):
@@ -882,12 +884,13 @@ class IntegralEnergySensorEntity(IntegrationSensor):
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_entity_registry_visible_default = False
 
-    def __init__(self, base: WattsSensorEntity, enabled_default: bool = True):
+    def __init__(self, base: WattsSensorEntity, enabled_default: bool = True, energy_title: str | None = None):
         version_kwargs: dict[str, Any] = {"hass": base.coordinator.hass} if _INTEGRATION_SENSOR_TAKES_HASS else {}
+        title = energy_title or base.title().replace(f"{const.POWER}", f" {const.ENERGY}")
         super().__init__(
             **version_kwargs,
             integration_method="left",
-            name=f"{base._device.device_info.name} {base.title().replace(f'{const.POWER}', f' {const.ENERGY}')}",
+            name=f"{base._device.device_info.name} {title}",
             round_digits=4,
             source_entity=base.entity_id,
             unique_id=f"{base._attr_unique_id}_energy",
