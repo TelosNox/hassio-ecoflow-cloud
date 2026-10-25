@@ -5,6 +5,7 @@ from homeassistant.components.switch import SwitchEntity
 
 from custom_components.ecoflow_cloud.devices import BaseDevice, const
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
+from custom_components.ecoflow_cloud.devices.public.delta3_max_plus import Delta3ChargingStateSensorEntity
 from custom_components.ecoflow_cloud.number import (
     ChargingPowerEntity,
     MaxBatteryLevelEntity,
@@ -14,11 +15,13 @@ from custom_components.ecoflow_cloud.select import DictSelectEntity, TimeoutDict
 from custom_components.ecoflow_cloud.sensor import (
     # AmpSensorEntity,
     CapacitySensorEntity,
+    FrequencySensorEntity,
     # CyclesSensorEntity,
     # InAmpSensorEntity,
     # InVoltSensorEntity,
     InWattsSensorEntity,
     LevelSensorEntity,
+    MiscSensorEntity,
     # OutVoltSensorEntity,
     OutWattsSensorEntity,
     QuotaStatusSensorEntity,
@@ -39,8 +42,9 @@ class DeltaPro3(BaseDevice):
             CapacitySensorEntity(client, self, "bmsDesignCap", const.MAIN_DESIGN_CAPACITY, False),
             # CapacitySensorEntity(client, self, "bmsFullCapMah", const.MAIN_FULL_CAPACITY, False),
             # CapacitySensorEntity(client, self, "bmsRemainCapMah", const.MAIN_REMAIN_CAPACITY, False),
-            LevelSensorEntity(client, self, "cmsChgDsgState", "Charging/Discharging State", False),
-            LevelSensorEntity(client, self, "cmsBmsRunState", "BMS Run State", False),
+            # 0: idle, 1: discharging, 2: charging (same enum as the DELTA 3 Max Plus)
+            Delta3ChargingStateSensorEntity(client, self, "cmsChgDsgState", "Charging/Discharging State", False),
+            MiscSensorEntity(client, self, "cmsBmsRunState", "BMS Run State", False),
             LevelSensorEntity(client, self, "cmsBattSoc", const.COMBINED_BATTERY_LEVEL),
             # LevelSensorEntity(client, self, "bmsBattSoh", const.SOH),
             # CyclesSensorEntity(client, self, "bmsCycles", const.CYCLES),
@@ -86,7 +90,7 @@ class DeltaPro3(BaseDevice):
             OutWattsSensorEntity(client, self, "powGet4p81", "4P8 Extra Battery Port 1 Power", False, True),
             OutWattsSensorEntity(client, self, "powGet4p82", "4P8 Extra Battery Port 2 Power", False, True),
             # OutWattsSensorEntity(client, self, "acOutFreq", "AC Output Frequency"),
-            LevelSensorEntity(client, self, "plugInInfoAcInFeq", "AC Input Frequency"),
+            FrequencySensorEntity(client, self, "plugInInfoAcInFeq", "AC Input Frequency"),
             QuotaStatusSensorEntity(client, self),
         ]
 
@@ -195,6 +199,10 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgBeepEn": value},
                 },
+                # enBeep / cfgBeepEn are true when the beeper is on, unlike the
+                # inverted quiet-mode flags BeeperEntity defaults to
+                enableValue=1,
+                disableValue=0,
             ),
             EnabledEntity(
                 client,

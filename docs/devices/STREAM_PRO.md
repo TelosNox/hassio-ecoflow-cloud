@@ -22,7 +22,7 @@
 - Min Cell Temperature (`minCellTemp`)   _(disabled)_
 - Min Cell Volts (`minCellVol`)   _(disabled)_
 - Out Power (`outputWatts`)   _(disabled)_
-- Power Battery (`powGetBpCms`)
+- System Battery Power (`powGetBpCms`)
 - Power PV 1 (`powGetPv`)   _(auto)_
 - Power PV 2 (`powGetPv2`)   _(auto)_
 - Power PV 3 (`powGetPv3`)   _(auto)_
@@ -43,5 +43,6 @@
 - Power AC SYS (`sysGridConnectionPower`)   _(disabled)_
 - Battery Temperature (`temp`)   _(disabled)_
 - Battery Volts (`vol`)   _(disabled)_
+- Status
 
 

@@ -1887,9 +1887,9 @@ from Home Assistant.
 - Power Grid (L1) Volts  _(disabled)_
 - Power Grid (L2) Volts  _(disabled)_
 - Power Grid (L3) Volts  _(disabled)_
-- L1 net energy daily  _(disabled)_
-- L2 net energy daily  _(disabled)_
-- L3 net energy daily  _(disabled)_
+- L1 lifetime net energy  _(disabled)_
+- L2 lifetime net energy  _(disabled)_
+- L3 lifetime net energy  _(disabled)_
 - Net energy consumption
 - Lifetime delivery
 - Lifetime consumption
@@ -1942,7 +1942,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power  _(disabled)_
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -1991,7 +1991,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power  _(disabled)_
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -2040,7 +2040,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power  _(disabled)_
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -2089,7 +2089,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power  _(disabled)_
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -3015,7 +3015,7 @@ from Home Assistant.
 - Solar (3) Event Code  _(disabled)_
 - Solar (3) Warn Code
 - Solar (3) Temperature
-- Solar Total Charge Current  _(disabled)_
+- Solar Total Charge Energy  _(disabled)_
 - Solar Energy for Day  _(disabled)_
 
 ### lddc
@@ -3172,7 +3172,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -3246,7 +3246,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -3320,7 +3320,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -3394,7 +3394,7 @@ from Home Assistant.
 - Min Cell Temperature  _(disabled)_
 - Min Cell Volts  _(disabled)_
 - Out Power
-- Power Battery
+- System Battery Power
 - Power PV 1  _(auto)_
 - Power PV 2  _(auto)_
 - Power PV 3  _(auto)_
@@ -3637,7 +3637,7 @@ from Home Assistant.
 
 </p></details>
 
-<details><summary> Power Ocean (API) <i>(sensors: 26)</i> </summary>
+<details><summary> Power Ocean (API) <i>(sensors: 29)</i> </summary>
 <p>
 
 *Sensors*
@@ -3660,6 +3660,9 @@ from Home Assistant.
 - sysGridPwr
 - sysLoadPwr
 - bpPwr
+- mpptPwr  _(auto)_
+- evPwr  _(auto)_
+- chargingStatus  _(auto)_
 - mpptPv1.pwr
 - mpptPv1.amp
 - mpptPv1.vol

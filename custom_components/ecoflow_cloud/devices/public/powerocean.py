@@ -15,6 +15,7 @@ from custom_components.ecoflow_cloud.sensor import (
     AmpSensorEntity,
     CyclesSensorEntity,
     EnergySensorEntity,
+    EnergyStorageSensorEntity,
     LevelSensorEntity,
     MilliVoltSensorEntity,
     MiscSensorEntity,
@@ -87,6 +88,11 @@ class PowerOcean(BaseDevice):
             WattsSensorEntity(client, self, "sysGridPwr", "sysGridPwr"),
             WattsSensorEntity(client, self, "sysLoadPwr", "sysLoadPwr"),
             WattsSensorEntity(client, self, "bpPwr", "bpPwr"),
+            # Further quota/all fields; enabled only if the system reports them
+            # (evPwr / chargingStatus come from a PowerPulse EV charger).
+            SolarPowerSensorEntity(client, self, "mpptPwr", "mpptPwr", False, True),
+            WattsSensorEntity(client, self, "evPwr", "evPwr", False, True),
+            MiscSensorEntity(client, self, "chargingStatus", "chargingStatus", False, True),
         ]
 
         mppt_prefix, string_count = self._determine_mppt_metadata()
@@ -185,7 +191,8 @@ class PowerOcean(BaseDevice):
             TempSensorEntity(client, self, f"{prefix}.bpMaxMosTemp", f"{prefix}MaxMosTemp"),
             TempSensorEntity(client, self, f"{prefix}.bpMinMosTemp", f"{prefix}MinMosTemp"),
             CyclesSensorEntity(client, self, f"{prefix}.bpCycles", f"{prefix}Cycles"),
-            EnergySensorEntity(client, self, f"{prefix}.bpRemainWatth", f"{prefix}RemainWatth"),
+            # Energy left in the pack: falls on discharge, so a measurement, not a meter.
+            EnergyStorageSensorEntity(client, self, f"{prefix}.bpRemainWatth", f"{prefix}RemainWatth"),
             ScaledEnergySensorEntity(
                 client,
                 self,
