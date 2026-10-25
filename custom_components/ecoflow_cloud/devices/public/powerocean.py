@@ -15,6 +15,7 @@ from custom_components.ecoflow_cloud.sensor import (
     AmpSensorEntity,
     CyclesSensorEntity,
     EnergySensorEntity,
+    EnergyStorageSensorEntity,
     LevelSensorEntity,
     MilliVoltSensorEntity,
     MiscSensorEntity,
@@ -190,7 +191,8 @@ class PowerOcean(BaseDevice):
             TempSensorEntity(client, self, f"{prefix}.bpMaxMosTemp", f"{prefix}MaxMosTemp"),
             TempSensorEntity(client, self, f"{prefix}.bpMinMosTemp", f"{prefix}MinMosTemp"),
             CyclesSensorEntity(client, self, f"{prefix}.bpCycles", f"{prefix}Cycles"),
-            EnergySensorEntity(client, self, f"{prefix}.bpRemainWatth", f"{prefix}RemainWatth"),
+            # Energy left in the pack: falls on discharge, so a measurement, not a meter.
+            EnergyStorageSensorEntity(client, self, f"{prefix}.bpRemainWatth", f"{prefix}RemainWatth"),
             ScaledEnergySensorEntity(
                 client,
                 self,
