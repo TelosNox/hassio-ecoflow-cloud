@@ -53,3 +53,18 @@ def test_mistyped_keys_read_the_documented_field_but_keep_their_unique_id() -> N
         entity = sensors[f"ecoflow-api-{SN}-{legacy_uid_suffix}"]
         assert entity.mqtt_key == documented_key
         assert [m.value for m in entity._mqtt_key_expr.find({documented_key: 42})] == [42]
+
+
+def test_mqtt_quota_reports_land_under_the_quota_all_prefix() -> None:
+    # Report examples from api-docs/wave_air_conditioner.md, "Report Device Quota".
+    device = _device()
+    pd_report = b'{"moduleType": 1, "typeCode": "analysisPD", "params": {"pdMainMode": 2, "heatEnv": 2382}}'
+    status_report = b'{"moduleType": 1, "typeCode": "devStatus", "params": {"envTemp": 24.5, "coolTemp": 25.4}}'
+    power_report = b'{"moduleType": 2, "typeCode": "analysisPOWER", "params": {"acPwrIn": 0, "mpptPwr": 12}}'
+    bms_report = b'{"moduleType": 4, "typeCode": "analysisBMS", "params": {"bmsSoc": 0, "remainCap": 0}}'
+
+    assert device._prepare_data(pd_report)["params"]["pd.heatEnv"] == 2382
+    assert device._prepare_data(status_report)["params"]["pd.envTemp"] == 24.5
+    assert device._prepare_data(power_report)["params"]["power.mpptPwr"] == 12
+    # Slave pack reports must not overwrite the main pack's bms.* values.
+    assert "bms.remainCap" not in device._prepare_data(bms_report)["params"]
