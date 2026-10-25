@@ -159,3 +159,38 @@ class TestDelta2MaxGeneratorLevels:
         text = json.dumps(dump)
         assert '"bms_emsStatus.minOpenOilEb"' in text
         assert "minOpenOilEbSoc" not in text
+
+
+class TestPublicDeltaPro3QuotaKeys:
+    """delta_pro_3.md: set commands cfgHvAcOutOpen / cfgLvAcOutOpen / cfgDc12vOutOpen /
+    cfgDc24vOutOpen / cfgPlugInInfoAcInChgPowMax; the quota reports flowInfoAcHvOut,
+    flowInfoAcLvOut, flowInfo12v, flowInfo24v "(0: off, 2: on.)" and
+    plugInInfoAcInChgPowMax."""
+
+    SWITCHES = {
+        "flowInfoAcHvOut": "cfgHvAcOutOpen",
+        "flowInfoAcLvOut": "cfgLvAcOutOpen",
+        "flowInfo12v": "cfgDc12vOutOpen",
+        "flowInfo24v": "cfgDc24vOutOpen",
+    }
+
+    @pytest.fixture
+    def device(self) -> Any:
+        return _device(PublicDeltaPro3, "Delta Pro 3", True)
+
+    def test_switches_read_flow_info_and_keep_unique_ids(self, device: Any) -> None:
+        switches = _by_key(device.switches(CLIENT))
+        for flow, cfg in self.SWITCHES.items():
+            switch = switches[flow]
+            assert switch.unique_id == f"ecoflow-api-{SN}-{cfg}"
+            assert switch.command_dict(1)["params"] == {cfg: 1}
+            assert switch._update_value(2) and switch.is_on
+            assert switch._update_value(0) and not switch.is_on
+            assert not switch._update_value(1)  # undocumented value: state unchanged
+            assert not switch.is_on
+
+    def test_ac_charging_slider_reads_quota_key(self, device: Any) -> None:
+        slider = _by_key(device.numbers(CLIENT))["plugInInfoAcInChgPowMax"]
+
+        assert slider.unique_id == f"ecoflow-api-{SN}-cfgPlugInInfoAcInChgPowMax"
+        assert slider.command_dict(1500)["params"] == {"cfgPlugInInfoAcInChgPowMax": 1500}

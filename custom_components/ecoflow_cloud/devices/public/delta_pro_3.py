@@ -1,3 +1,5 @@
+from typing import Any
+
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.sensor import SensorEntity
@@ -6,6 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from custom_components.ecoflow_cloud.devices import BaseDevice, const
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.devices.public.delta3_max_plus import Delta3ChargingStateSensorEntity
+from custom_components.ecoflow_cloud.entities import keep_unique_id
 from custom_components.ecoflow_cloud.number import (
     ChargingPowerEntity,
     MaxBatteryLevelEntity,
@@ -30,6 +33,36 @@ from custom_components.ecoflow_cloud.sensor import (
     # VoltSensorEntity,
 )
 from custom_components.ecoflow_cloud.switch import BeeperEntity, EnabledEntity
+
+
+class FlowInfoSwitch(EnabledEntity):
+    """Output switch whose state is a flowInfo* quota field.
+
+    delta_pro_3.md: the set command is cfg*Open, but the device reports the
+    state as flowInfoAcHvOut / flowInfoAcLvOut / flowInfo12v / flowInfo24v,
+    "(0: off, 2: on.)". Other values leave the state alone. The command keeps
+    sending 1/0 as before (reported working, tolwi#615).
+    """
+
+    def _update_value(self, val: Any) -> bool:
+        if val == 2:
+            new_state = True
+        elif val == 0:
+            new_state = False
+        else:
+            return False
+        if self._attr_is_on != new_state:
+            self._attr_is_on = new_state
+            return True
+        return False
+
+    def turn_on(self, **kwargs: Any) -> None:
+        if self._command:
+            self.send_set_message(2, self.command_dict(1))
+
+    def turn_off(self, **kwargs: Any) -> None:
+        if self._command:
+            self.send_set_message(0, self.command_dict(0))
 
 
 class DeltaPro3(BaseDevice):
@@ -164,10 +197,11 @@ class DeltaPro3(BaseDevice):
                     "params": {"cfgCmsOilOffSoc": value},
                 },
             ),
-            ChargingPowerEntity(
+            # quota field plugInInfoAcInChgPowMax; cfg* is only the set command name
+            keep_unique_id(ChargingPowerEntity(
                 client,
                 self,
-                "cfgPlugInInfoAcInChgPowMax",
+                "plugInInfoAcInChgPowMax",
                 const.AC_CHARGING_POWER,
                 400,
                 2900,
@@ -180,7 +214,7 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgPlugInInfoAcInChgPowMax": value},
                 },
-            ),
+            ), "cfgPlugInInfoAcInChgPowMax"),
         ]
 
     def switches(self, client: EcoflowApiClient) -> list[SwitchEntity]:
@@ -204,10 +238,10 @@ class DeltaPro3(BaseDevice):
                 enableValue=1,
                 disableValue=0,
             ),
-            EnabledEntity(
+            keep_unique_id(FlowInfoSwitch(
                 client,
                 self,
-                "cfgHvAcOutOpen",
+                "flowInfoAcHvOut",
                 "AC HV Output Enabled",
                 lambda value, params=None: {
                     "sn": self.device_info.sn,
@@ -218,11 +252,11 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgHvAcOutOpen": value},
                 },
-            ),
-            EnabledEntity(
+            ), "cfgHvAcOutOpen"),
+            keep_unique_id(FlowInfoSwitch(
                 client,
                 self,
-                "cfgLvAcOutOpen",
+                "flowInfoAcLvOut",
                 "AC LV Output Enabled",
                 lambda value, params=None: {
                     "sn": self.device_info.sn,
@@ -233,11 +267,11 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgLvAcOutOpen": value},
                 },
-            ),
-            EnabledEntity(
+            ), "cfgLvAcOutOpen"),
+            keep_unique_id(FlowInfoSwitch(
                 client,
                 self,
-                "cfgDc12vOutOpen",
+                "flowInfo12v",
                 "12V DC Output Enabled",
                 lambda value, params=None: {
                     "sn": self.device_info.sn,
@@ -248,11 +282,11 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgDc12vOutOpen": value},
                 },
-            ),
-            EnabledEntity(
+            ), "cfgDc12vOutOpen"),
+            keep_unique_id(FlowInfoSwitch(
                 client,
                 self,
-                "cfgDc24vOutOpen",
+                "flowInfo24v",
                 "24V DC Output Enabled",
                 lambda value, params=None: {
                     "sn": self.device_info.sn,
@@ -263,7 +297,7 @@ class DeltaPro3(BaseDevice):
                     "dest": 2,
                     "params": {"cfgDc24vOutOpen": value},
                 },
-            ),
+            ), "cfgDc24vOutOpen"),
             EnabledEntity(
                 client,
                 self,
