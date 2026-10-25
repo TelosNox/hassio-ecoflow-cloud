@@ -83,3 +83,59 @@ class StreamPvWattsSensorEntity(WattsSensorEntity):
         # shallow copy to avoid surprising other sensors that read the same
         # payload dict afterwards.
         super()._updated({**data, self.mqtt_key: watts})
+
+
+class StreamPvTotalWattsSensorEntity(WattsSensorEntity):
+    """Sum of this unit's own PV strings (pv1..pv4), in watts.
+
+    ``powGetPvSum`` is a system aggregate: only the master of a linked
+    STREAM system reports it (a slave sends 0), and it does not cover every
+    string on every model (a Stream Pro with modules on pv3/pv4 reads 0).
+    This sensor adds up the per-string readings of the unit itself instead.
+
+    Each string is given as ``(amp_key, vol_key, watts_key)``; any of them
+    may be ``None``. Per string the larger of ``amp x vol`` and ``watts_key``
+    wins, which covers both firmware generations: before 1.0.1.88 the
+    ``powGetPv*`` watts are valid and ``plugInInfoPv*Amp`` is 0, from
+    1.0.1.88 on it is the other way round (see StreamPvWattsSensorEntity).
+    """
+
+    _SYNTHETIC_KEY = "pvWattsTotal"
+
+    def __init__(
+        self,
+        client,
+        device,
+        strings: list[tuple[str | None, str | None, str | None]],
+        title,
+        enabled: bool = True,
+        auto_enable: bool = False,
+    ) -> None:
+        self._strings = strings
+        super().__init__(client, device, self._SYNTHETIC_KEY, title, enabled, auto_enable)
+
+    def _string_watts(self, data: dict[str, Any], amp_key, vol_key, watts_key) -> float | None:
+        candidates: list[float] = []
+        try:
+            if amp_key is not None and vol_key is not None:
+                amp = data.get(amp_key)
+                vol = data.get(vol_key)
+                if amp is not None and vol is not None:
+                    candidates.append(float(amp) * float(vol))
+            if watts_key is not None and data.get(watts_key) is not None:
+                candidates.append(float(data[watts_key]))
+        except (TypeError, ValueError):
+            return None
+        if not candidates:
+            return None
+        return max(0.0, *candidates)
+
+    def _updated(self, data: dict[str, Any]) -> None:  # type: ignore[override]
+        per_string = [self._string_watts(data, *keys) for keys in self._strings]
+        known = [w for w in per_string if w is not None]
+        if not known:
+            # No string reported yet: let the upstream pipeline handle
+            # offline / default-value reset.
+            super()._updated(data)
+            return
+        super()._updated({**data, self.mqtt_key: sum(known)})

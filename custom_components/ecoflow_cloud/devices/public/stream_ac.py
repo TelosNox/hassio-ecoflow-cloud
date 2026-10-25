@@ -29,6 +29,7 @@ from custom_components.ecoflow_cloud.sensor import (
     WattsSensorEntity,
 )
 from custom_components.ecoflow_cloud.devices.public.stream_pv_helpers import (
+    StreamPvTotalWattsSensorEntity,
     StreamPvWattsSensorEntity,
 )
 from custom_components.ecoflow_cloud.switch import EnabledEntity
@@ -89,13 +90,17 @@ class StreamAC(BaseDevice):
             # "cmsBattPowInMax": 2114,
             # "cmsBattPowOutMax": 2400,
             # "cmsBattSoc": 43.0,
-            # Actual battery state-of-charge. Stream Ultra / Ultra X report SoC
-            # via cmsBattSoc rather than soc/f32ShowSoc, so expose it directly
-            # as a battery-level sensor (auto_enable so it only activates on
-            # firmware that actually sends the field).
-            LevelSensorEntity(client, self, "cmsBattSoc", const.STREAM_BATTERY_LEVEL, False, True),
+            # cmsBattSoc is the SoC of the whole linked STREAM system: the
+            # master reports it, a slave reports 0. It is not this unit's own
+            # battery level - that is "soc" (see below). The data key and so
+            # the unique_id stay unchanged; only the display name says what
+            # the value actually is (tolwi/hassio-ecoflow-cloud#923).
+            LevelSensorEntity(client, self, "cmsBattSoc", const.STREAM_SYSTEM_BATTERY_LEVEL, False, True),
+            # Same system scope: cmsBattFullEnergy x cmsBattSoc is the energy
+            # stored in the whole system. Pairing the per-unit "soc" with the
+            # system-wide cmsBattFullEnergy would mix two scopes.
             StoredEnergyFromSocSensorEntity(
-                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_STORED_ENERGY
+                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_SYSTEM_STORED_ENERGY
             ),
             # "cmsBattSoh": 100.0,
             # "cmsBmsRunState": 1,
@@ -126,7 +131,7 @@ class StreamAC(BaseDevice):
             # "energyStrategyOperateMode.operateSelfPoweredOpen": true,
             # "energyStrategyOperateMode.operateTouModeOpen": false,
             # "f32ShowSoc": 46.317574,
-            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_POWER_BATTERY_SOC),
+            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_BATTERY_LEVEL_PRECISE),
             # "feedGridMode": 2,
             # "feedGridModePowLimit": 800,
             # "feedGridModePowMax": 800,
@@ -228,6 +233,21 @@ class StreamAC(BaseDevice):
             AmpSensorEntity(client, self, "plugInInfoPv4Amp", const.STREAM_IN_AMPS_PV_4, False, True),
             # "powGetPvSum": 2051.3975,
             WattsSensorEntity(client, self, "powGetPvSum", const.STREAM_POWER_PV_SUM),
+            # Per-unit PV total over all four strings, plus its energy. The
+            # device reports no cumulative PV energy counter, so the energy is
+            # a Riemann sum computed in Home Assistant - disabled by default
+            # (tolwi/hassio-ecoflow-cloud#842, #808).
+            StreamPvTotalWattsSensorEntity(
+                client,
+                self,
+                [
+                    ("plugInInfoPvAmp", "plugInInfoPvVol", "powGetPv"),
+                    ("plugInInfoPv2Amp", "plugInInfoPv2Vol", "powGetPv2"),
+                    ("plugInInfoPv3Amp", "plugInInfoPv3Vol", "powGetPv3"),
+                    ("plugInInfoPv4Amp", "plugInInfoPv4Vol", "powGetPv4"),
+                ],
+                const.STREAM_POWER_PV_TOTAL,
+            ).with_energy(enabled_default=False, energy_title=const.STREAM_PV_TOTAL_ENERGY),
             # "powGetSchuko1": 0.0,
             WattsSensorEntity(client, self, "powGetSchuko1", const.STREAM_GET_SCHUKO1, False, True),
             # "powGetSchuko2": 18.654325,
@@ -261,7 +281,11 @@ class StreamAC(BaseDevice):
             # "seriesConnectDeviceId": 1,
             # "seriesConnectDeviceStatus": "MASTER",
             # "soc": 46,
-            LevelSensorEntity(client, self, "soc", const.STREAM_POWER_BATTERY)
+            # This unit's own battery level (reported by master and slave).
+            # It used to be titled "Power Battery", the same name as the
+            # powGetBpCms watts sensor (tolwi/hassio-ecoflow-cloud#862); only
+            # the display name changed, the unique_id still derives from "soc".
+            LevelSensorEntity(client, self, "soc", const.STREAM_BATTERY_LEVEL)
             .attr("designCap", const.ATTR_DESIGN_CAPACITY, 0)
             .attr("fullCap", const.ATTR_FULL_CAPACITY, 0)
             .attr("remainCap", const.ATTR_REMAIN_CAPACITY, 0),

@@ -401,6 +401,8 @@ STREAM_IN_VOL_PV_2 = "Power PV2 Volts"
 STREAM_IN_VOL_PV_3 = "Power PV3 Volts"
 STREAM_IN_VOL_PV_4 = "Power PV4 Volts"
 STREAM_POWER_PV_SUM = "Power PV Sum"
+STREAM_POWER_PV_TOTAL = "Power PV Total"  # this unit's pv1..pv4, unlike the master-only powGetPvSum
+STREAM_PV_TOTAL_ENERGY = "PV Total Energy"
 STREAM_GET_SYS_LOAD = "Power Sys Load" # powGetSysLoad
 STREAM_GET_SYS_LOAD_FROM_BP = "Power Sys Load From Battery" # powGetSysLoadFromBp
 STREAM_GET_SYS_LOAD_FROM_GRID = "Power Sys Load From Grid" # powGetSysLoadFromGrid
@@ -409,12 +411,15 @@ STREAM_GET_SCHUKO1 = "Power SCHUKO1" # powGetSchuko1
 STREAM_GET_SCHUKO2 = "Power SCHUKO2" # powGetSchuko2
 STREAM_POWER_GRID = "Power Grid" # power from smart meter or shelly
 STREAM_POWER_BATTERY = "Power Battery" # <0 discharge battery / >0 charge batterie
-STREAM_POWER_BATTERY_SOC = "Power Battery SOC" # <0 discharge battery / >0 charge batterie
+STREAM_BATTERY_LEVEL_PRECISE = "Battery Level (Precise)"  # f32ShowSoc
 STREAM_BATTERY_LEVEL = "Battery Level"
+# cmsBatt* fields describe the whole linked STREAM system and are only
+# reported by the master unit (a slave sends 0).
+STREAM_SYSTEM_BATTERY_LEVEL = "System Battery Level"  # cmsBattSoc
 STREAM_DESIGN_CAPACITY = "Design Capacity"
 STREAM_FULL_CAPACITY = "Full Capacity"
 STREAM_REMAIN_CAPACITY = "Remain Capacity"
-STREAM_STORED_ENERGY = "Stored Energy"
+STREAM_SYSTEM_STORED_ENERGY = "System Stored Energy"  # cmsBattFullEnergy x cmsBattSoc
 STREAM_STR_BATTERY_LEVEL = "Battery Level %s "
 STREAM_STR_DESIGN_CAPACITY = "Design Capacity %s "
 STREAM_STR_FULL_CAPACITY = "Full Capacity %s "

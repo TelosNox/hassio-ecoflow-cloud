@@ -31,6 +31,10 @@ class StatusTracker:
         self._assume_offline_sec = assume_offline_sec
         self._force_offline_sec = assume_offline_sec * 3
         self._last_data_time: datetime = _EPOCH
+        # Unlike _last_data_time, only actual telemetry moves this: an explicit
+        # "online" from /device/list is exactly what EcoFlow keeps reporting
+        # while it has stopped asking the device to send data.
+        self._last_telemetry_time: datetime = _EPOCH
         self._explicit_offline: bool = False
         self._explicit_status_count: int = 0
         self._explicit_status_last_time: datetime | None = None
@@ -46,6 +50,7 @@ class StatusTracker:
     def on_data_received(self):
         """Called when any MQTT/API message with actual params arrives."""
         self._last_data_time = dt.utcnow()
+        self._last_telemetry_time = self._last_data_time
         self._explicit_offline = False
         self._data_received_count += 1
 
@@ -86,3 +91,7 @@ class StatusTracker:
     @property
     def last_data_time(self) -> datetime:
         return self._last_data_time
+
+    @property
+    def last_telemetry_time(self) -> datetime:
+        return self._last_telemetry_time

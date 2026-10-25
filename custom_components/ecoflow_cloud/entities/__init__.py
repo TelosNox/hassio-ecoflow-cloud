@@ -125,6 +125,7 @@ class EcoFlowDictEntity(EcoFlowAbstractDataEntity):
         self._attr_available = enabled
         self.__attributes_mapping: dict[str, tuple[JSONPath, str]] = {}
         self.__attrs = OrderedDict[str, Any]()
+        self._reset_done = False
         if diagnostic is not None:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC if diagnostic else None
 
@@ -157,15 +158,29 @@ class EcoFlowDictEntity(EcoFlowAbstractDataEntity):
         # self.async_on_remove(d.dispose)
 
     def _handle_coordinator_update(self) -> None:
+        params = self.coordinator.data.data_holder.params
+        if self._resets_on_offline() and self._device.status_tracker.is_offline:
+            # Whatever arrives while offline is HTTP quota data, which EcoFlow
+            # serves from its last snapshot. Publishing it would flip the
+            # reset value back to the old reading on every poll, and keeping
+            # it in params would bring it back once the device is online.
+            self._mqtt_key_expr.update(params, cast(BaseSensorEntity, self)._attr_default_value)
+            if not self._reset_done:
+                self._reset_done = True
+                self._updated(params)
+            return
+
+        # Back online: stay at the default until the device actually reports.
+        self._reset_done = False
         if self.coordinator.data.changed:
-            self._updated(self.coordinator.data.data_holder.params)
-        elif (  # noqa: SIM102
-            self._device.status_tracker.is_offline and self._device.device_data.options.reset_sensors_on_offline
-        ):
-            # Reset sensors that should reset to default values
-            if isinstance(self, BaseSensorEntity) and self._attr_default_value is not None:
-                self._mqtt_key_expr.update(self.coordinator.data.data_holder.params, self._attr_default_value)
-                self._updated(self.coordinator.data.data_holder.params)
+            self._updated(params)
+
+    def _resets_on_offline(self) -> bool:
+        return (
+            self._device.device_data.options.reset_sensors_on_offline
+            and isinstance(self, BaseSensorEntity)
+            and self._attr_default_value is not None
+        )
 
     def _updated(self, data: dict[str, Any]):
         # update attributes
@@ -288,9 +303,11 @@ class BaseSensorEntity(SensorEntity, EcoFlowDictEntity):  # type: ignore[misc]
         auto_enable: bool = False,
         diagnostic: bool | None = None,
     ):
+        # _attr_default_value is only the reset-on-offline value. Don't seed it as the initial state:
+        # a sensor that hasn't received a frame yet is unknown, not 0. Seeding made voltage, frequency
+        # and power read 0 for minutes after every HA restart, and the energy integrals counted that
+        # false 0 W as real.
         super().__init__(client, device, mqtt_key, title, enabled, auto_enable, diagnostic)
-        if self._attr_default_value is not None:
-            self._attr_native_value = self._attr_default_value
 
     def _update_value(self, val: Any) -> bool:
         if self._attr_native_value != val:
