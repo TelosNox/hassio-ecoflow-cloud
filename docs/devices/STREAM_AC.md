@@ -43,5 +43,6 @@
 - Power AC SYS (`sysGridConnectionPower`)   _(disabled)_
 - Battery Temperature (`temp`)   _(disabled)_
 - Battery Volts (`vol`)   _(disabled)_
+- Status
 
 
