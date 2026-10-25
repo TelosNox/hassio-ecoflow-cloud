@@ -80,7 +80,7 @@ class DeltaPro(BaseDevice):
             InMilliampSolarSensorEntity(client, self, "mppt.inAmp", const.SOLAR_IN_CURRENT),
             OutWattsDcSensorEntity(client, self, "mppt.outWatts", const.DC_OUT_POWER),
             OutVoltDcSensorEntity(client, self, "mppt.outVol", const.DC_OUT_VOLTAGE),
-            OutWattsSensorEntity(client, self, "mppt.carOutWatts", const.DC_CAR_OUT_POWER),
+            OutWattsDcSensorEntity(client, self, "mppt.carOutWatts", const.DC_CAR_OUT_POWER),
             OutWattsSensorEntity(client, self, "mppt.dcdc12vWatts", const.DC_ANDERSON_OUT_POWER),
             OutWattsSensorEntity(client, self, "pd.typec1Watts", const.TYPEC_1_OUT_POWER),
             OutWattsSensorEntity(client, self, "pd.typec2Watts", const.TYPEC_2_OUT_POWER),
