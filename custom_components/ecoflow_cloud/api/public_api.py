@@ -31,7 +31,7 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         self.access_key = access_key.strip()
         self.secret_key = secret_key.strip()
         self.group = group
-        self.nonce = str(random.randint(10000, 1000000))
+        self.nonce = self._gen_nonce()
         self.timestamp = str(int(time.time() * 1000))
 
     async def login(self):
@@ -79,8 +79,13 @@ class EcoflowPublicApiClient(EcoflowApiClient):
             except Exception:
                 _LOGGER.exception("Error retrieving %s", sn)
 
+    @staticmethod
+    def _gen_nonce() -> str:
+        # EcoFlow specifies the nonce header as a 6-digit random number
+        return str(random.randint(100000, 999999))
+
     async def call_api(self, endpoint: str, params: dict[str, str] | None = None) -> dict:
-        self.nonce = str(random.randint(10000, 1000000))
+        self.nonce = self._gen_nonce()
         self.timestamp = str(int(time.time() * 1000))
         async with aiohttp.ClientSession() as session:
             params_str = ""
