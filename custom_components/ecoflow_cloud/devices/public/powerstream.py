@@ -107,7 +107,7 @@ class PowerStream(BaseDevice):
                 self,
                 "20_1.lowerLimit",
                 "Min Discharge Level",
-                0,
+                1,
                 30,
                 lambda value: {
                     "sn": self.device_info.sn,
