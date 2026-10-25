@@ -35,10 +35,10 @@
 
 *Switches*
 - Beeper (`enBeep` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgBeepEn": "VALUE"}}`)
-- AC HV Output Enabled (`cfgHvAcOutOpen` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgHvAcOutOpen": "VALUE"}}`)
-- AC LV Output Enabled (`cfgLvAcOutOpen` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgLvAcOutOpen": "VALUE"}}`)
-- 12V DC Output Enabled (`cfgDc12vOutOpen` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgDc12vOutOpen": "VALUE"}}`)
-- 24V DC Output Enabled (`cfgDc24vOutOpen` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgDc24vOutOpen": "VALUE"}}`)
+- AC HV Output Enabled (`flowInfoAcHvOut` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgHvAcOutOpen": "VALUE"}}`)
+- AC LV Output Enabled (`flowInfoAcLvOut` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgLvAcOutOpen": "VALUE"}}`)
+- 12V DC Output Enabled (`flowInfo12v` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgDc12vOutOpen": "VALUE"}}`)
+- 24V DC Output Enabled (`flowInfo24v` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgDc24vOutOpen": "VALUE"}}`)
 - X-Boost Enabled (`xboostEn` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgXboostEn": "VALUE"}}`)
 - AC Energy Saving Enabled (`acEnergySavingOpen` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgAcEnergySavingOpen": "VALUE"}}`)
 - Smart Generator Auto Start/Stop (`cmsOilSelfStart` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgCmsOilSelfStart": "VALUE"}}`)
@@ -48,7 +48,7 @@
 - Min Discharge Level (`cmsMinDsgSoc` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgMinDsgSoc": "VALUE"}}` [0 - 30])
 - Smart Generator Start SOC (`cmsOilOnSoc` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgCmsOilOnSoc": "VALUE"}}` [0 - 100])
 - Smart Generator Stop SOC (`cmsOilOffSoc` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgCmsOilOffSoc": "VALUE"}}` [0 - 100])
-- AC Charging Power (`cfgPlugInInfoAcInChgPowMax` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgPlugInInfoAcInChgPowMax": "VALUE"}}` [400 - 2900])
+- AC Charging Power (`plugInInfoAcInChgPowMax` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgPlugInInfoAcInChgPowMax": "VALUE"}}` [400 - 2900])
 
 *Selects*
 - Screen Timeout (`screenOffTime` -> `{"sn": "SN", "cmdId": 17, "dirDest": 1, "dirSrc": 1, "cmdFunc": 254, "dest": 2, "params": {"cfgScreenOffTime": "VALUE"}}` [Never (0), 10 sec (10), 30 sec (30), 1 min (60), 5 min (300), 30 min (1800)])
