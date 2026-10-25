@@ -372,7 +372,7 @@ class Delta2Max(BaseInternalDevice):
                     "moduleType": 3,
                     "operateType": "acOutCfg",
                     "moduleSn": self.device_info.sn,
-                    "params": {"xboost": value},
+                    "params": {"enabled": 255, "out_voltage": 4294967295, "out_freq": 255, "xboost": value},
                 },
             ),
             EnabledEntity(
