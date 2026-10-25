@@ -8,6 +8,7 @@ from homeassistant.const import UnitOfTemperature
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.devices import BaseInternalDevice, const
+from custom_components.ecoflow_cloud.entities import EcoFlowDictEntity
 from custom_components.ecoflow_cloud.number import SetTempEntity
 from custom_components.ecoflow_cloud.select import DictSelectEntity
 from custom_components.ecoflow_cloud.sensor import (
@@ -59,6 +60,12 @@ class Wave2SetTempEntity(SetTempEntity):
             self.schedule_update_ha_state()
 
 
+def _legacy_unique_id[T: EcoFlowDictEntity](entity: T, legacy_key: str) -> T:
+    """Read the documented key but keep the unique_id derived from an earlier, mistyped key."""
+    entity._attr_unique_id = entity._gen_unique_id(entity._device.device_data.sn, legacy_key)
+    return entity
+
+
 class Wave2(BaseInternalDevice):
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         return [
@@ -88,15 +95,15 @@ class Wave2(BaseInternalDevice):
             WattsSensorEntity(client, self, "pd.batPwrOut", "Battery output power"),
             WattsSensorEntity(client, self, "pd.pvPower", "PV charging power"),
             WattsSensorEntity(client, self, "pd.acPwrIn", "AC input power"),
-            WattsSensorEntity(client, self, "pd.psdrPower ", "Power supply power"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "pd.psdrPower", "Power supply power"), "pd.psdrPower "),
             WattsSensorEntity(client, self, "pd.sysPowerWatts", "System power"),
-            WattsSensorEntity(client, self, "pd.batPower ", "Battery power"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "pd.batPower", "Battery power"), "pd.batPower "),
             # power (motor)
             WattsSensorEntity(client, self, "motor.power", "Motor operating power"),
             # power (power)
             WattsSensorEntity(client, self, "power.batPwrOut", "Battery output power"),
-            WattsSensorEntity(client, self, "power.acPwrI", "AC input power"),
-            WattsSensorEntity(client, self, "power.mpptPwr ", "PV input power"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "power.acPwrIn", "AC input power"), "power.acPwrI"),
+            _legacy_unique_id(WattsSensorEntity(client, self, "power.mpptPwr", "PV input power"), "power.mpptPwr "),
             QuotaStatusSensorEntity(client, self),
         ]
 
