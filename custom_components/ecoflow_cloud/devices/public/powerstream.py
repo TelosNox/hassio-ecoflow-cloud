@@ -37,6 +37,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PowerStream(BaseDevice):
+    @staticmethod
+    def default_charging_power_step() -> int:
+        # permanentWatts is set in 0.1 W (doc example: 213 = 21.3 W), so the
+        # generic 100 W step is an integration limit, not a device one.
+        return 1
+
     def sensors(self, client: EcoflowApiClient) -> Sequence[SensorEntity]:
         return [
             CelsiusSensorEntity(client, self, "20_1.espTempsensor", "ESP Temperature"),
@@ -63,7 +69,8 @@ class PowerStream(BaseDevice):
             DeciwattsSensorEntity(client, self, "20_1.batInputWatts", "Battery Input Watts"),
             DecivoltSensorEntity(client, self, "20_1.batInputVolt", "Battery Input Potential"),
             DecivoltSensorEntity(client, self, "20_1.batOpVolt", "Battery Op Potential"),
-            MilliampSensorEntity(client, self, "20_1.batInputCur", "Battery Input Current"),
+            # 0.1 A, positive = discharging (doc: power_stream_micro_inverter.md)
+            DeciampSensorEntity(client, self, "20_1.batInputCur", "Battery Input Current"),
             DecicelsiusSensorEntity(client, self, "20_1.batTemp", "Battery Temperature"),
             RemainSensorEntity(client, self, "20_1.chgRemainTime", "Charge Time"),
             RemainSensorEntity(client, self, "20_1.dsgRemainTime", "Discharge Time"),
@@ -107,7 +114,7 @@ class PowerStream(BaseDevice):
                 self,
                 "20_1.lowerLimit",
                 "Min Discharge Level",
-                0,
+                1,
                 30,
                 lambda value: {
                     "sn": self.device_info.sn,
