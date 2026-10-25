@@ -7,8 +7,8 @@
 - Cumulative Energy Discharge (Wh) (`accuDsgEnergy`)
 - Charge Remaining Time (`bmsChgRemTime`)   _(disabled)_
 - Discharge Remaining Time (`bmsDsgRemTime`)   _(disabled)_
-- Battery Level (`cmsBattSoc`)   _(auto)_
-- Stored Energy (`storedEnergy_cmsBattFullEnergy`)
+- System Battery Level (`cmsBattSoc`)   _(auto)_
+- System Stored Energy (`storedEnergy_cmsBattFullEnergy`)
 - Max Charge Level (`cmsMaxChgSoc`)
 - Min Discharge Level (`cmsMinDsgSoc`)
 - Cycles (`cycles`)
@@ -56,6 +56,7 @@
 - Power AC SYS (`sysGridConnectionPower`)
 - Battery Temperature (`temp`)
 - Battery Volts (`vol`)   _(disabled)_
+- Status
 
 *Switches*
 - AC 1 On (`relay2Onoff` -> `{"sn": "SN", "cmdId": 17, "cmdFunc": 254, "dirDest": 1, "dirSrc": 1, "dest": 2, "needAck": true, "params": {"cfgRelay2Onoff": "VALUE"}}`)

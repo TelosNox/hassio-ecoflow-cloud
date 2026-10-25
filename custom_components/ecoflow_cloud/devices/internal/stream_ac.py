@@ -152,7 +152,7 @@ class StreamAC(BaseInternalDevice):
             # the source fields never arrive, while still surfacing on Stream
             # models that do report them.
             StoredEnergyFromSocSensorEntity(
-                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_STORED_ENERGY, False, True
+                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_SYSTEM_STORED_ENERGY, False, True
             ),
             # "cmsBattSoh": 100.0,
             # "cmsBmsRunState": 1,

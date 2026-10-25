@@ -1870,7 +1870,7 @@
 - Cumulative Energy Discharge (Wh)  _(disabled)_
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time
-- Stored Energy  _(auto)_
+- System Stored Energy  _(auto)_
 - Max Charge Level
 - Min Discharge Level
 - Cycles  _(disabled)_
@@ -1919,7 +1919,7 @@
 - Cumulative Energy Discharge (Wh)  _(disabled)_
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time
-- Stored Energy  _(auto)_
+- System Stored Energy  _(auto)_
 - Max Charge Level
 - Min Discharge Level
 - Cycles  _(disabled)_
@@ -1968,7 +1968,7 @@
 - Cumulative Energy Discharge (Wh)  _(disabled)_
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time
-- Stored Energy  _(auto)_
+- System Stored Energy  _(auto)_
 - Max Charge Level
 - Min Discharge Level
 - Cycles  _(disabled)_
@@ -2017,7 +2017,7 @@
 - Cumulative Energy Discharge (Wh)  _(disabled)_
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time
-- Stored Energy  _(auto)_
+- System Stored Energy  _(auto)_
 - Max Charge Level
 - Min Discharge Level
 - Cycles  _(disabled)_
@@ -3089,7 +3089,7 @@
 
 </p></details>
 
-<details><summary> Stream AC (API) <i>(sensors: 55, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream AC (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3099,8 +3099,8 @@
 - Cumulative Energy Discharge (Wh)
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time  _(disabled)_
-- Battery Level  _(auto)_
-- Stored Energy
+- System Battery Level  _(auto)_
+- System Stored Energy
 - Max Charge Level
 - Min Discharge Level
 - Cycles
@@ -3148,6 +3148,7 @@
 - Power AC SYS
 - Battery Temperature
 - Battery Volts  _(disabled)_
+- Status
 
 *Switches*
 - AC 1 On
@@ -3161,7 +3162,7 @@
 
 </p></details>
 
-<details><summary> Stream PRO (API) <i>(sensors: 55, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream PRO (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3171,8 +3172,8 @@
 - Cumulative Energy Discharge (Wh)
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time  _(disabled)_
-- Battery Level  _(auto)_
-- Stored Energy
+- System Battery Level  _(auto)_
+- System Stored Energy
 - Max Charge Level
 - Min Discharge Level
 - Cycles
@@ -3220,6 +3221,7 @@
 - Power AC SYS
 - Battery Temperature
 - Battery Volts  _(disabled)_
+- Status
 
 *Switches*
 - AC 1 On
@@ -3233,7 +3235,7 @@
 
 </p></details>
 
-<details><summary> Stream Ultra (API) <i>(sensors: 55, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream Ultra (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3243,8 +3245,8 @@
 - Cumulative Energy Discharge (Wh)
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time  _(disabled)_
-- Battery Level  _(auto)_
-- Stored Energy
+- System Battery Level  _(auto)_
+- System Stored Energy
 - Max Charge Level
 - Min Discharge Level
 - Cycles
@@ -3292,6 +3294,7 @@
 - Power AC SYS
 - Battery Temperature
 - Battery Volts  _(disabled)_
+- Status
 
 *Switches*
 - AC 1 On
@@ -3305,7 +3308,7 @@
 
 </p></details>
 
-<details><summary> Stream Ultra X (API) <i>(sensors: 55, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream Ultra X (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3315,8 +3318,8 @@
 - Cumulative Energy Discharge (Wh)
 - Charge Remaining Time  _(disabled)_
 - Discharge Remaining Time  _(disabled)_
-- Battery Level  _(auto)_
-- Stored Energy
+- System Battery Level  _(auto)_
+- System Stored Energy
 - Max Charge Level
 - Min Discharge Level
 - Cycles
@@ -3364,6 +3367,7 @@
 - Power AC SYS
 - Battery Temperature
 - Battery Volts  _(disabled)_
+- Status
 
 *Switches*
 - AC 1 On

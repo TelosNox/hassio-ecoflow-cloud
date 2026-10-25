@@ -7,7 +7,7 @@
 - Cumulative Energy Discharge (Wh) (`accuDsgEnergy`)   _(disabled)_
 - Charge Remaining Time (`bmsChgRemTime`)   _(disabled)_
 - Discharge Remaining Time (`bmsDsgRemTime`)
-- Stored Energy (`storedEnergy_cmsBattFullEnergy`)   _(auto)_
+- System Stored Energy (`storedEnergy_cmsBattFullEnergy`)   _(auto)_
 - Max Charge Level (`cmsMaxChgSoc`)
 - Min Discharge Level (`cmsMinDsgSoc`)
 - Cycles (`cycles`)   _(disabled)_

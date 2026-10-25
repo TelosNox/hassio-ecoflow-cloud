@@ -411,10 +411,13 @@ STREAM_POWER_GRID = "Power Grid" # power from smart meter or shelly
 STREAM_POWER_BATTERY = "Power Battery" # <0 discharge battery / >0 charge batterie
 STREAM_POWER_BATTERY_SOC = "Power Battery SOC" # <0 discharge battery / >0 charge batterie
 STREAM_BATTERY_LEVEL = "Battery Level"
+# cmsBatt* fields describe the whole linked STREAM system and are only
+# reported by the master unit (a slave sends 0).
+STREAM_SYSTEM_BATTERY_LEVEL = "System Battery Level"  # cmsBattSoc
 STREAM_DESIGN_CAPACITY = "Design Capacity"
 STREAM_FULL_CAPACITY = "Full Capacity"
 STREAM_REMAIN_CAPACITY = "Remain Capacity"
-STREAM_STORED_ENERGY = "Stored Energy"
+STREAM_SYSTEM_STORED_ENERGY = "System Stored Energy"  # cmsBattFullEnergy x cmsBattSoc
 STREAM_STR_BATTERY_LEVEL = "Battery Level %s "
 STREAM_STR_DESIGN_CAPACITY = "Design Capacity %s "
 STREAM_STR_FULL_CAPACITY = "Full Capacity %s "

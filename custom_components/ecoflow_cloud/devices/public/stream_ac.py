@@ -89,13 +89,17 @@ class StreamAC(BaseDevice):
             # "cmsBattPowInMax": 2114,
             # "cmsBattPowOutMax": 2400,
             # "cmsBattSoc": 43.0,
-            # Actual battery state-of-charge. Stream Ultra / Ultra X report SoC
-            # via cmsBattSoc rather than soc/f32ShowSoc, so expose it directly
-            # as a battery-level sensor (auto_enable so it only activates on
-            # firmware that actually sends the field).
-            LevelSensorEntity(client, self, "cmsBattSoc", const.STREAM_BATTERY_LEVEL, False, True),
+            # cmsBattSoc is the SoC of the whole linked STREAM system: the
+            # master reports it, a slave reports 0. It is not this unit's own
+            # battery level - that is "soc" (see below). The data key and so
+            # the unique_id stay unchanged; only the display name says what
+            # the value actually is (tolwi/hassio-ecoflow-cloud#923).
+            LevelSensorEntity(client, self, "cmsBattSoc", const.STREAM_SYSTEM_BATTERY_LEVEL, False, True),
+            # Same system scope: cmsBattFullEnergy x cmsBattSoc is the energy
+            # stored in the whole system. Pairing the per-unit "soc" with the
+            # system-wide cmsBattFullEnergy would mix two scopes.
             StoredEnergyFromSocSensorEntity(
-                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_STORED_ENERGY
+                client, self, "cmsBattFullEnergy", "cmsBattSoc", const.STREAM_SYSTEM_STORED_ENERGY
             ),
             # "cmsBattSoh": 100.0,
             # "cmsBmsRunState": 1,
