@@ -160,6 +160,14 @@ class EcoflowApiClient(ABC):
             else:
                 target_sn = device.device_info.sn
 
+        if not self.mqtt_client.is_connected():
+            # paho would queue the command and deliver it whenever the next
+            # connect succeeds, possibly hours later (tolwi#819, #922)
+            _LOGGER.warning(
+                "Not sending set command for %s, the MQTT connection is down: %s", device_sn, command.describe()
+            )
+            return
+
         device.data.update_to_target_state(mqtt_state)
         # Every write is logged, so a setting that changed "by itself" can be
         # traced to a command from this integration or ruled out (tolwi#819, #922).

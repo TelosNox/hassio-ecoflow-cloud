@@ -42,3 +42,40 @@ def test_paho_keeps_its_locks(offline_paho):
 
     assert isinstance(paho._out_message_mutex, type(threading.RLock()))
     assert isinstance(paho._callback_mutex, type(threading.RLock()))
+
+
+def _connack(client: EcoflowMQTTClient) -> None:
+    from paho.mqtt.packettypes import PacketTypes
+    from paho.mqtt.reasoncodes import ReasonCode
+
+    client._on_connect(None, None, None, ReasonCode(PacketTypes.CONNACK, "Success"))  # type: ignore[arg-type]
+
+
+def test_stale_unacknowledged_command_is_not_resent(offline_paho, monkeypatch):
+    from custom_components.ecoflow_cloud.api import ecoflow_mqtt
+
+    now = [1000.0]
+    monkeypatch.setattr(ecoflow_mqtt.time, "monotonic", lambda: now[0])
+    client = _client()
+    paho = client._EcoflowMQTTClient__client  # type: ignore[attr-defined]
+
+    # not connected: paho keeps both for the next connect
+    client.publish("/open/user/BK11OLD/set", b'{"old": 1}')
+    now[0] += ecoflow_mqtt.STALE_COMMAND_SEC
+    client.publish("/open/user/BK11NEW/set", b'{"new": 1}')
+    assert len(paho._out_messages) == 2
+
+    _connack(client)
+
+    assert [m.payload for m in paho._out_messages.values()] == [b'{"new": 1}']
+
+
+def test_acknowledged_message_is_forgotten(offline_paho):
+    client = _client()
+    paho = client._EcoflowMQTTClient__client  # type: ignore[attr-defined]
+    client.publish("/open/user/BK11/set", b"{}")
+    mid = next(iter(paho._out_messages))
+
+    client._on_publish(None, None, mid, None, None)  # type: ignore[arg-type]
+
+    assert client._EcoflowMQTTClient__unacked == {}  # type: ignore[attr-defined]
