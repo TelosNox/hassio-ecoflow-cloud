@@ -268,7 +268,7 @@ class SmartHomePanel(BaseDevice):
                         "cmdSet": 11,
                         "id": 29,
                         "discLower": value,
-                        "forceChargeHigh": int(params.get("heartbeat.backupChaDiscCfg.forceChargeHigh", 100)),
+                        "forceChargeHigh": int(params.get("backupChaDiscCfg.forceChargeHigh", 100)),
                     },
                 },
             ),
