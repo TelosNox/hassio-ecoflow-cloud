@@ -29,11 +29,13 @@ message SmartMeterDisplayPropertyUpload {
   optional float voltageL3 = 771;
   optional float powerL3 = 772;
   optional SmartMeterEnergyArray energy = 773;
-  optional float currentL1 = 784; // ??
+  // 958/959/784 are L1/L2/L3, like voltage 956/957/771 and power 962/963/772
+  // (BK21 capture with L1 idle at 0 W and 0.00 A, shuette42/ecoflow-energy-ha#331)
+  optional float currentL1 = 958;
   optional float voltageL1 = 956;
   optional float voltageL2 = 957;
-  optional float currentL3 = 958; // ??
-  optional float currentL2 = 959; // ??
+  optional float currentL3 = 784;
+  optional float currentL2 = 959;
   optional float powerL1 = 962;
   optional float powerL2 = 963;
   //optional uint32 unknown = 984;
