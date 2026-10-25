@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -8,7 +9,10 @@ from aiohttp import ClientResponse
 from attr import dataclass
 from homeassistant.components.diagnostics import async_redact_data
 
+from homeassistant.util import dt
+
 from ..device_data import DeviceData
+from .commands import PendingCommand, PendingCommands, evaluate_set_reply
 from .message import JSONMessage, Message
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,6 +55,7 @@ class EcoflowApiClient(ABC):
         self._mqtt_reconnect_count = 0
         # set by the integration, the only layer that can reach hass and the config entry
         self.on_auth_failure: Callable[[], None] | None = None
+        self.pending_commands = PendingCommands()
 
     @abstractmethod
     async def login(self):
@@ -127,16 +132,26 @@ class EcoflowApiClient(ABC):
         except KeyError as key:
             raise EcoflowException(f"Failed to extract key {key} from {resp}")
         except Exception as error:
-            raise EcoflowException(f"Failed to parse response: {resp.text} Error: {error}")
+            # resp.text is a coroutine method; formatting it printed "<bound method ...>"
+            raise EcoflowException(f"Failed to parse response (HTTP {resp.status}): {error}")
 
-        if response_message.lower() != "success":
-            raw_code = json_resp.get("code")
-            code = None if raw_code is None else str(raw_code)
+        raw_code = json_resp.get("code")
+        code = None if raw_code is None else str(raw_code)
+        if not self._is_success(code, str(response_message)):
             if code in PUBLIC_API_AUTH_ERROR_CODES:
                 raise EcoflowAuthException(f"{response_message}", code=code)
             raise EcoflowException(f"{response_message}", code=code)
 
         return json_resp
+
+    # The public API documents success as code "0" ("Response Body": "code ...
+    # 0: success"); the app API is undocumented and keeps the message check.
+    _SUCCESS_BY_CODE = False
+
+    def _is_success(self, code: str | None, message: str) -> bool:
+        if self._SUCCESS_BY_CODE and code is not None:
+            return code == "0"
+        return message.lower() == "success"
 
     def send_get_message(self, device_sn: str, command: dict | Message):
         if isinstance(command, dict):
@@ -148,8 +163,130 @@ class EcoflowApiClient(ABC):
         if isinstance(command, dict):
             command = JSONMessage(command)
 
-        self.devices[device_sn].data.update_to_target_state(mqtt_state)
-        self.mqtt_client.publish(self.devices[device_sn].device_info.set_topic, command.to_mqtt_payload())
+        device = self.devices[device_sn]
+        topic = device.device_info.set_topic
+        target_sn = device.set_command_target_sn(command)
+        if target_sn != device.device_info.sn:
+            routed_topic = self._set_topic_for(target_sn)
+            if routed_topic is not None and isinstance(command, JSONMessage):
+                topic = routed_topic
+                if "sn" in command.data:
+                    command.data["sn"] = target_sn
+            else:
+                target_sn = device.device_info.sn
+
+        if not self.mqtt_client.is_connected():
+            # paho would queue the command and deliver it whenever the next
+            # connect succeeds, possibly hours later (tolwi#819, #922)
+            _LOGGER.warning(
+                "Not sending set command for %s, the MQTT connection is down: %s", device_sn, command.describe()
+            )
+            return
+
+        captured = device.data.capture_target_state(mqtt_state) if device.evaluates_set_replies() else None
+        sent_at = dt.utcnow()
+        device.data.update_to_target_state(mqtt_state)
+        # Every write is logged, so a setting that changed "by itself" can be
+        # traced to a command from this integration or ruled out (tolwi#819, #922).
+        # The payload carries the SN and the command, no credentials.
+        if target_sn != device_sn:
+            _LOGGER.info("Sending set command for %s to system main SN %s: %s", device_sn, target_sn, command.describe())
+        else:
+            _LOGGER.info("Sending set command for %s: %s", device_sn, command.describe())
+        self.mqtt_client.publish(topic, command.to_mqtt_payload())
+
+        if captured is not None and command.message_id is not None:
+            routed = target_sn != device.device_info.sn
+
+            def on_failure(reason: str) -> None:
+                rolled_back = device.data.rollback_target_state(captured, sent_at)
+                if rolled_back:
+                    _LOGGER.warning("Restored the previous value of %s on %s", ", ".join(rolled_back), device_sn)
+                if routed and device.main_sn_cache is not None:
+                    # the master role may have moved to another unit
+                    device.main_sn_cache.invalidate()
+
+            self.pending_commands.add(
+                PendingCommand(command.message_id, device_sn, target_sn, command.describe(), on_failure)
+            )
+
+    def on_set_reply(self, payload: bytes) -> None:
+        """Called for every message on a set_reply topic."""
+        if len(self.pending_commands) == 0:
+            return
+        try:
+            reply = json.loads(payload)
+        except ValueError:
+            return
+        if not isinstance(reply, dict):
+            return
+        command = self.pending_commands.match(reply)
+        if command is None:
+            return
+        reason = evaluate_set_reply(reply)
+        if reason is None:
+            _LOGGER.info("Set command %s for %s accepted by %s", command.message_id, command.device_sn, command.target_sn)
+            return
+        _LOGGER.warning(
+            "Set command %s for %s rejected by %s (%s): %s",
+            command.message_id,
+            command.device_sn,
+            command.target_sn,
+            reason,
+            command.description,
+        )
+        command.on_failure(reason)
+
+    def expire_pending_commands(self) -> None:
+        for command in self.pending_commands.expire():
+            _LOGGER.warning(
+                "No set_reply from %s for set command %s of %s within %d s: %s",
+                command.target_sn,
+                command.message_id,
+                command.device_sn,
+                self.pending_commands.timeout_sec,
+                command.description,
+            )
+            command.on_failure("no reply")
+
+    def _set_topic_for(self, sn: str) -> str | None:
+        """Set topic of another device of this account; None if the API has no such topic."""
+        return None
+
+    def _set_reply_topic_for(self, sn: str) -> str | None:
+        return None
+
+    async def fetch_main_sn(self, device_sn: str) -> str | None:
+        """Main SN of the system the device belongs to; None if unknown."""
+        return None
+
+    async def async_refresh_main_sn(self, device) -> None:
+        cache = device.main_sn_cache
+        if cache is None or not cache.begin_refresh():
+            return
+        main_sn = None
+        try:
+            main_sn = await self.fetch_main_sn(device.device_info.sn)
+        finally:
+            changed = cache.accept(main_sn)
+        if main_sn is None:
+            if not cache.resolved and cache.failures == 1:
+                _LOGGER.warning(
+                    "Could not get the system main SN for %s, system commands go to its own SN for now",
+                    device.device_info.sn,
+                )
+            return
+        if changed:
+            _LOGGER.info("System main SN for %s is %s", device.device_info.sn, main_sn)
+        if main_sn != device.device_info.sn:
+            # the device answers a command on the topic it was sent to
+            reply_topic = self._set_reply_topic_for(main_sn)
+            if reply_topic is not None and getattr(self, "mqtt_client", None) is not None:
+                self.mqtt_client.add_topic(reply_topic)
+
+    async def async_refresh_main_sns(self) -> None:
+        for device in list(self.devices.values()):
+            await self.async_refresh_main_sn(device)
 
     def start(self):
         _LOGGER.debug("Starting MQTT client for %s", self.mqtt_info.client_id)
@@ -157,6 +294,8 @@ class EcoflowApiClient(ABC):
 
         self.mqtt_client = EcoflowMQTTClient(self.mqtt_info, self.devices)
         self.mqtt_client.on_auth_failure = self.on_auth_failure
+        self.mqtt_client.on_set_reply = self.on_set_reply
+        self.mqtt_client.on_message_processed = self.expire_pending_commands
 
     def schedule_mqtt_reconnect(self, data_stale: bool = False, cooldown_sec: int = 60) -> int | None:
         """Return the new reconnect count if a reconnect should run, else None.

@@ -8,6 +8,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from custom_components.ecoflow_cloud.api import (
     EcoflowApiClient,
@@ -266,6 +267,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             entry.data[CONF_ACCESS_KEY],
             entry.data[CONF_SECRET_KEY],
             entry.data[CONF_GROUP],
+            async_get_clientsession(hass),
         )
     else:
         return False
@@ -306,6 +308,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     api_client.on_auth_failure = request_reauth
     await hass.async_add_executor_job(api_client.start)
     hass.data[ECOFLOW_DOMAIN][entry.entry_id] = api_client
+
+    # STREAM system commands go to the system's main SN; never blocks the setup
+    try:
+        await api_client.async_refresh_main_sns()
+    except Exception as ex:
+        _LOGGER.warning("Failed to resolve system main SNs: %s", ex)
 
     # Must load all device data before configuring devices because the data
     # is used for entity setup.

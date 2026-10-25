@@ -6,7 +6,9 @@ Reference: EcoFlow IoT Developer Platform, "General information" -
 
 import asyncio
 
-from custom_components.ecoflow_cloud.api import public_api
+import pytest
+
+from custom_components.ecoflow_cloud.api import EcoflowAuthException, EcoflowException, public_api
 from custom_components.ecoflow_cloud.api.public_api import EcoflowPublicApiClient
 
 
@@ -53,3 +55,84 @@ def test_device_list_without_data_is_empty(monkeypatch):
     monkeypatch.setattr(client, "call_api", call_api)
 
     assert asyncio.run(client.fetch_all_available_devices()) == []
+
+
+class _FakeResponse:
+    status = 200
+    reason = "OK"
+
+    def __init__(self, body=None):
+        self.body = body or {"code": "0", "message": "Success", "data": {"sn": "BK31"}}
+
+    async def json(self):
+        return self.body
+
+
+class _FakeGet:
+    async def __aenter__(self):
+        return _FakeResponse()
+
+    async def __aexit__(self, *args):
+        return False
+
+
+class _FakeSession:
+    def __init__(self):
+        self.urls: list[str] = []
+
+    def get(self, url, headers):
+        self.urls.append(url)
+        return _FakeGet()
+
+
+def test_calls_reuse_the_given_session(monkeypatch):
+    # tolwi#886: a new ClientSession per call means a new connection and DNS lookup each time
+    def no_new_session(*args, **kwargs):
+        raise AssertionError("a new aiohttp session was opened")
+
+    monkeypatch.setattr(public_api.aiohttp, "ClientSession", no_new_session)
+    session = _FakeSession()
+    client = EcoflowPublicApiClient("api-e.ecoflow.com", "ak", "sk", "Home", session)  # type: ignore[arg-type]
+
+    asyncio.run(client.call_api("/device/system/main/sn", {"sn": "BK61"}))
+    asyncio.run(client.call_api("/device/system/main/sn", {"sn": "BK61"}))
+
+    assert session.urls == ["https://api-e.ecoflow.com/iot-open/sign/device/system/main/sn?sn=BK61"] * 2
+
+
+def _parse(client, body):
+    return asyncio.run(client._get_json_response(_FakeResponse(body)))  # type: ignore[arg-type]
+
+
+def test_public_success_is_code_zero():
+    # every endpoint's Response Body: "code ... 0: success"
+    client = _client()
+    assert _parse(client, {"code": "0", "message": "Success"})["code"] == "0"
+    assert _parse(client, {"code": 0, "message": "ok"})["code"] == 0
+
+    with pytest.raises(EcoflowException) as error:
+        _parse(client, {"code": "1006", "message": "Success"})
+    assert error.value.code == "1006"
+    with pytest.raises(EcoflowAuthException):
+        _parse(client, {"code": "8513", "message": "accessKey is invalid"})
+
+
+def test_private_api_keeps_the_message_check():
+    from custom_components.ecoflow_cloud.api.private_api import EcoflowPrivateApiClient
+
+    client = EcoflowPrivateApiClient("api.ecoflow.com", "user", "pw", "Home")
+    assert _parse(client, {"code": "1006", "message": "Success"})
+    with pytest.raises(EcoflowException):
+        _parse(client, {"code": "0", "message": "ok"})
+
+
+class _BrokenResponse(_FakeResponse):
+    async def json(self):
+        raise ValueError("Expecting value")
+
+
+def test_parse_error_names_the_status_not_a_bound_method():
+    with pytest.raises(EcoflowException) as error:
+        asyncio.run(_client()._get_json_response(_BrokenResponse()))  # type: ignore[arg-type]
+
+    assert str(error.value) == "Failed to parse response (HTTP 200): Expecting value"

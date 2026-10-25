@@ -9,6 +9,7 @@
             "reconfigure_successful": "Reconfiguration was successful",
             "do_reconfigure_existing": "A device group with this name already exists. Reconfigure that entry instead.",
             "no_device_to_add": "No new devices to add: every device in this account has already been added.",
+            "no_devices_found": "EcoFlow lists no devices for these developer keys. Only devices bound to the EcoFlow account that the keys were created with are listed; devices shared with that account are not.",
             "remove_last_device": "The last device cannot be removed. Delete the integration entry instead.",
             "unknown": "Unexpected error"
         },

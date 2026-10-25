@@ -51,6 +51,9 @@ class EcoflowDataHolder:
         self.module_sn = module_sn
 
         self.params = dict[str, Any]()
+        # when the device last reported each top-level key, so a rollback never
+        # overwrites a value the device sent after the command
+        self._reported_at = dict[str, Any]()
 
         self.__collect_raw = collect_raw
         self.set_params = BoundFifoList[dict[str, Any]]()
@@ -99,6 +102,39 @@ class EcoflowDataHolder:
 
         self.set_params_time = dt.utcnow()
 
+    def capture_target_state(self, target_state: dict[str, Any]) -> dict[str, tuple[Any, Any]]:
+        """Current and target value per key that has a current value, before the target is applied."""
+        captured: dict[str, tuple[Any, Any]] = {}
+        for key, target in target_state.items():
+            found = jp.parse(key).find(self.params)
+            if len(found) == 1:
+                captured[key] = (found[0].value, target)
+        return captured
+
+    def rollback_target_state(self, captured: dict[str, tuple[Any, Any]], since) -> list[str]:
+        """Undo an optimistic update where neither the device nor a later command changed the key since."""
+        rolled_back = []
+        for key, (previous, target) in captured.items():
+            reported = self._reported_at.get(self._top_level_key(key))
+            if reported is not None and reported >= since:
+                continue
+            expr = jp.parse(key)
+            found = expr.find(self.params)
+            if len(found) != 1 or found[0].value != target:
+                continue
+            expr.update(self.params, previous)
+            rolled_back.append(key)
+        if rolled_back:
+            self.set_params_time = dt.utcnow()
+        return rolled_back
+
+    @staticmethod
+    def _top_level_key(key: str) -> str:
+        # flat-json devices use quoted keys ("'feedGridMode'"), the others jsonpath
+        if len(key) > 1 and key[0] == key[-1] == "'":
+            return key[1:-1]
+        return key.split(".", 1)[0]
+
     def add_status(self, data: PreparedData):
         self.__accept_prepared_data(data, self.set_status.append)
         self.set_status_time = dt.utcnow()
@@ -116,6 +152,8 @@ class EcoflowDataHolder:
         if "params" in params:
             self.params.update(params["params"])
             self.set_params_time = dt.utcnow()
+            for key in params["params"]:
+                self._reported_at[key] = self.set_params_time
 
     def __accept_prepared_data(self, data: PreparedData, raw_data_acceptor: Callable[[dict[str, Any]], None]):
         if data.online is not None:

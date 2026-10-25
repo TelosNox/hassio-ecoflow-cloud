@@ -9,6 +9,7 @@
             "reconfigure_successful": "A reconfiguração foi bem sucedida",
             "do_reconfigure_existing": "Já existe um grupo de dispositivos com este nome. Reconfigure a entrada existente.",
             "no_device_to_add": "Não há novos dispositivos para adicionar: todos os dispositivos desta conta já foram adicionados.",
+            "no_devices_found": "A EcoFlow não devolve nenhum dispositivo para estas chaves de programador. Só são listados os dispositivos associados à conta EcoFlow com que as chaves foram criadas; os dispositivos partilhados com essa conta não.",
             "remove_last_device": "Não é possível remover o último dispositivo. Elimine a entrada da integração.",
             "unknown": "Erro inesperado"
         },

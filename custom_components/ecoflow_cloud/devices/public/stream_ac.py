@@ -6,7 +6,10 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
-from custom_components.ecoflow_cloud.devices import BaseDevice, const
+from custom_components.ecoflow_cloud.api.commands import MainSnCache, stream_command_target_sn
+from custom_components.ecoflow_cloud.api.message import JSONMessage, Message
+from custom_components.ecoflow_cloud.device_data import DeviceData
+from custom_components.ecoflow_cloud.devices import BaseDevice, EcoflowDeviceInfo, const
 from custom_components.ecoflow_cloud.devices.public.data_bridge import to_plain
 from custom_components.ecoflow_cloud.number import BatteryBackupLevel
 from custom_components.ecoflow_cloud.sensor import (
@@ -36,6 +39,26 @@ from custom_components.ecoflow_cloud.switch import EnabledEntity
 
 
 class StreamAC(BaseDevice):
+    def __init__(self, device_info: EcoflowDeviceInfo, device_data: DeviceData):
+        super().__init__(device_info, device_data)
+        self._main_sn = MainSnCache(device_info.sn)
+
+    @property
+    def main_sn_cache(self) -> MainSnCache | None:
+        return self._main_sn
+
+    def set_command_target_sn(self, command: Message) -> str:
+        # Backup reserve, operating mode and feed-in are system settings and go
+        # to the system's main SN; AC1/AC2 stay on this unit (stream.md)
+        if isinstance(command, JSONMessage):
+            return stream_command_target_sn(command.data, self.device_info.sn, self._main_sn.sn)
+        return self.device_info.sn
+
+    def evaluates_set_replies(self) -> bool:
+        # stream.md "Set & Set Reply": every command has needAck true and the
+        # reply carries the same id and data.configOk
+        return True
+
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         return [
             # "accuChgCap": 198511,

@@ -133,3 +133,64 @@ class TestInternalDeltaPro3:
         entity = _by_key(_device(InternalDeltaPro3, "DELTA_PRO_3", False).sensors(CLIENT))[key]
         entity._update_value(42.5)
         assert entity._attr_native_value == 42.5
+
+
+class TestDelta2MaxGeneratorLevels:
+    """api-docs/delta_2_max.md BMS openOilSoc / closeOilSoc -> bms_emsStatus.minOpenOilEb /
+    maxCloseOilEb; diag/delta_2_max.json carries only those keys."""
+
+    @pytest.mark.parametrize(("public_api", "prefix"), [(False, "ecoflow-"), (True, "ecoflow-api-")])
+    def test_reads_documented_keys_and_keeps_unique_ids(self, public_api: bool, prefix: str) -> None:
+        numbers = _by_key(_device(Delta2Max, "DELTA_2_MAX", public_api).numbers(CLIENT))
+
+        start = numbers["bms_emsStatus.minOpenOilEb"]
+        stop = numbers["bms_emsStatus.maxCloseOilEb"]
+
+        assert start.unique_id == f"{prefix}{SN}-bms-emsStatus-minOpenOilEbSoc"
+        assert stop.unique_id == f"{prefix}{SN}-bms-emsStatus-maxCloseOilEbSoc"
+        assert start.command_dict(10)["params"] == {"openOilSoc": 10}
+        assert stop.command_dict(90)["params"] == {"closeOilSoc": 90}
+
+    def test_diag_dump_has_only_documented_keys(self) -> None:
+        import json
+        from pathlib import Path
+
+        dump = json.loads((Path(__file__).parent.parent / "diag" / "delta_2_max.json").read_text())
+        text = json.dumps(dump)
+        assert '"bms_emsStatus.minOpenOilEb"' in text
+        assert "minOpenOilEbSoc" not in text
+
+
+class TestPublicDeltaPro3QuotaKeys:
+    """delta_pro_3.md: set commands cfgHvAcOutOpen / cfgLvAcOutOpen / cfgDc12vOutOpen /
+    cfgDc24vOutOpen / cfgPlugInInfoAcInChgPowMax; the quota reports flowInfoAcHvOut,
+    flowInfoAcLvOut, flowInfo12v, flowInfo24v "(0: off, 2: on.)" and
+    plugInInfoAcInChgPowMax."""
+
+    SWITCHES = {
+        "flowInfoAcHvOut": "cfgHvAcOutOpen",
+        "flowInfoAcLvOut": "cfgLvAcOutOpen",
+        "flowInfo12v": "cfgDc12vOutOpen",
+        "flowInfo24v": "cfgDc24vOutOpen",
+    }
+
+    @pytest.fixture
+    def device(self) -> Any:
+        return _device(PublicDeltaPro3, "Delta Pro 3", True)
+
+    def test_switches_read_flow_info_and_keep_unique_ids(self, device: Any) -> None:
+        switches = _by_key(device.switches(CLIENT))
+        for flow, cfg in self.SWITCHES.items():
+            switch = switches[flow]
+            assert switch.unique_id == f"ecoflow-api-{SN}-{cfg}"
+            assert switch.command_dict(1)["params"] == {cfg: 1}
+            assert switch._update_value(2) and switch.is_on
+            assert switch._update_value(0) and not switch.is_on
+            assert not switch._update_value(1)  # undocumented value: state unchanged
+            assert not switch.is_on
+
+    def test_ac_charging_slider_reads_quota_key(self, device: Any) -> None:
+        slider = _by_key(device.numbers(CLIENT))["plugInInfoAcInChgPowMax"]
+
+        assert slider.unique_id == f"ecoflow-api-{SN}-cfgPlugInInfoAcInChgPowMax"
+        assert slider.command_dict(1500)["params"] == {"cfgPlugInInfoAcInChgPowMax": 1500}

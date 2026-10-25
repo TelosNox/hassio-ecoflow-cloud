@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
+from custom_components.ecoflow_cloud.api.commands import MainSnCache
 from custom_components.ecoflow_cloud.api.message import JSONDict, JSONMessage, Message
 from custom_components.ecoflow_cloud.device_data import DeviceData
 from custom_components.ecoflow_cloud.devices.data_coordinator import DeviceDataCoordinator
@@ -92,6 +93,20 @@ class BaseDevice(ABC):
     def flat_json(self) -> bool:
         return True
 
+    @property
+    def main_sn_cache(self) -> MainSnCache | None:
+        """Main SN of the system this device belongs to, for devices whose
+        system commands go to that SN. None: every command uses the own SN."""
+        return None
+
+    def set_command_target_sn(self, command: Message) -> str:
+        return self.device_info.sn
+
+    def evaluates_set_replies(self) -> bool:
+        """Opt-in: match set_reply to the command, roll the optimistic state back on a
+        rejection or no answer. Only for devices whose reply format is documented."""
+        return False
+
     async def async_restore_state(self):
         """Restore persisted device state on startup. Override in subclasses."""
 
@@ -166,18 +181,17 @@ class BaseDevice(ABC):
         return PreparedData(None, None, data)
 
     def _prepare_data(self, raw_data: bytes) -> dict[str, Any]:
+        payload = raw_data.decode("utf-8", errors="ignore")
         try:
-            try:
-                payload = raw_data.decode("utf-8", errors="ignore")
-                return json.loads(payload)
-            except UnicodeDecodeError as error:
-                _LOGGER.warning(f"UnicodeDecodeError: {error}. Trying to load json.")
-                return json.loads(raw_data)
-            except Exception as error:
-                _LOGGER.warning(f"Exception: {error}. Trying to load json.")
-                return json.loads(raw_data)
-        except Exception as error1:
-            _LOGGER.error(f"constant: {error1}. Ignoring message and waiting for the next one.")
+            return json.loads(payload)
+        except ValueError as error:
+            if payload.lstrip().startswith("{"):
+                _LOGGER.warning("Ignoring a malformed JSON message for %s: %s", self.device_info.sn, error)
+            else:
+                # binary (protobuf) frames reach JSON device classes too, e.g. on
+                # the set/get topics; one line each at WARNING and ERROR flooded
+                # the log (tolwi#210, #872)
+                _LOGGER.debug("Ignoring a non-JSON message of %d bytes for %s", len(raw_data), self.device_info.sn)
             return {}
 
 

@@ -35,5 +35,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "set_status": [dict(sorted(k.items())) for k in device.data.set_status],
             "set_params": [dict(sorted(k.items())) for k in device.data.set_params],
         }
+        if device.main_sn_cache is not None:
+            value["system_main_sn"] = device.main_sn_cache.sn if device.main_sn_cache.resolved else None
         values["EcoFlow"].append(value)
     return values
