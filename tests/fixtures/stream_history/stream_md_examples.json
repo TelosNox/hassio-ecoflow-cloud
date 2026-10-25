@@ -1,0 +1,149 @@
+{
+  "independence": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "indexName": "master_data",
+          "indexValue": 19.5,
+          "unit": "%"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  },
+  "co2": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "indexName": "master_data",
+          "indexValue": 3970,
+          "unit": "g"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  },
+  "savings": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "indexName": "master_data",
+          "indexValue": 0,
+          "unit": "€"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  },
+  "solar": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "unit": "wh",
+          "indexName": "master_data",
+          "indexValue": "9945"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  },
+  "load": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "unit": "wh",
+          "indexName": "master_data",
+          "indexValue": "12094"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  },
+  "grid": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "unit": "wh",
+          "indexName": "master_data",
+          "extra": "1",
+          "indexValue": "2886"
+        },
+        {
+          "unit": "wh",
+          "indexName": "master_data",
+          "extra": "2",
+          "indexValue": "0"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  },
+  "battery": {
+    "code": "0",
+    "message": "Success",
+    "data": {
+      "code": "0",
+      "message": "Success",
+      "data": [
+        {
+          "unit": "wh",
+          "indexName": "master_data",
+          "extra": "2",
+          "indexValue": "2425"
+        },
+        {
+          "unit": "wh",
+          "indexName": "master_data",
+          "extra": "1",
+          "indexValue": "1967"
+        }
+      ],
+      "eagleEyeTraceId": "",
+      "tid": ""
+    },
+    "eagleEyeTraceId": "",
+    "tid": ""
+  }
+}

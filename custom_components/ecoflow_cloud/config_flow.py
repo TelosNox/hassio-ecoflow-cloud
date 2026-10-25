@@ -35,11 +35,13 @@ from custom_components.ecoflow_cloud import (
     CONF_USERNAME,
     CONFIG_VERSION,
     DEFAULT_ASSUME_OFFLINE_SEC,
+    MAX_HISTORY_BACKFILL_DAYS,
     DEFAULT_REFRESH_PERIOD_SEC,
     DEFAULT_RESET_SENSORS_ON_OFFLINE,
     ECOFLOW_DOMAIN,
     OPTS_ASSUME_OFFLINE_SEC,
     OPTS_DIAGNOSTIC_MODE,
+    OPTS_HISTORY_BACKFILL_DAYS,
     OPTS_POWER_STEP,
     OPTS_REFRESH_PERIOD_SEC,
     OPTS_RESET_SENSORS_ON_OFFLINE,
@@ -555,9 +557,23 @@ class EcoflowOptionsFlow(OptionsFlow):
         self.selected_device = self.device_selector[user_input[CONF_SELECT_DEVICE_KEY]]
         return await self.async_step_options()
 
+    def _has_stream_history(self) -> bool:
+        if CONF_ACCESS_KEY not in self.config_entry.data:
+            return False
+        from .devices.public.stream_ac import StreamAC
+        from .devices.registry import device_by_product
+
+        device_class = device_by_product.get(self.selected_device.device_type)
+        return device_class is not None and issubclass(device_class, StreamAC)
+
     async def async_step_options(self, user_input: dict[str, Any] | None = None):
         if user_input is None:
             device_options: DeviceOptions = self.devices[self.selected_device.sn].options
+            history_schema = {}
+            if self._has_stream_history():
+                history_schema[
+                    vol.Required(OPTS_HISTORY_BACKFILL_DAYS, default=device_options.history_backfill_days)
+                ] = vol.All(vol.Coerce(int), vol.Range(min=1, max=MAX_HISTORY_BACKFILL_DAYS))
 
             return self.async_show_form(
                 step_id="options",
@@ -576,6 +592,7 @@ class EcoflowOptionsFlow(OptionsFlow):
                             OPTS_RESET_SENSORS_ON_OFFLINE,
                             default=device_options.reset_sensors_on_offline,
                         ): bool,
+                        **history_schema,
                     }
                 ),
             )
@@ -592,5 +609,9 @@ class EcoflowOptionsFlow(OptionsFlow):
             OPTS_ASSUME_OFFLINE_SEC: user_input[OPTS_ASSUME_OFFLINE_SEC],
             OPTS_RESET_SENSORS_ON_OFFLINE: user_input[OPTS_RESET_SENSORS_ON_OFFLINE],
         }
+        if OPTS_HISTORY_BACKFILL_DAYS in user_input:
+            new_options[CONF_DEVICE_LIST][self.selected_device.sn][OPTS_HISTORY_BACKFILL_DAYS] = user_input[
+                OPTS_HISTORY_BACKFILL_DAYS
+            ]
 
         return self.async_create_entry(title="", data=new_options)

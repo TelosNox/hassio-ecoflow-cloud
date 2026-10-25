@@ -434,6 +434,17 @@ STREAM_STR_OUT_POWER = "Out Power %s"
 STREAM_OPERATION_MODE_SELF_POWERED = "Operating mode - Self-powered"
 STREAM_OPERATION_MODE_AI_MODE = "Operating mode - AI Mode"
 STREAM_FEED_IN_CONTROL = "Feed-in control"
+# STREAM system history (public API /device/quota/data): values of the last
+# completed UTC day, see devices/public/stream_history.py
+STREAM_HISTORY_SOLAR_ENERGY = "Solar energy (last UTC day)"
+STREAM_HISTORY_HOME_CONSUMPTION = "Home consumption (last UTC day)"
+STREAM_HISTORY_GRID_IMPORT = "Grid import (last UTC day)"
+STREAM_HISTORY_GRID_EXPORT = "Grid export (last UTC day)"
+STREAM_HISTORY_BATTERY_CHARGE = "Battery charge (last UTC day)"
+STREAM_HISTORY_BATTERY_DISCHARGE = "Battery discharge (last UTC day)"
+STREAM_HISTORY_CO2_REDUCTION = "CO2 reduction (last UTC day)"
+STREAM_HISTORY_SOLAR_SAVINGS = "Solar savings (last UTC day)"
+STREAM_HISTORY_ENERGY_INDEPENDENCE = "Energy independence (UTC year)"
 
 # Stream Microinverter (BK-series, internal/App API)
 STREAM_GRID_CONNECTION_STATUS = "Grid Connection Status"

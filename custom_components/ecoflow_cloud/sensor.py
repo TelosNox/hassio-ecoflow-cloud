@@ -66,6 +66,14 @@ _INTEGRATION_SENSOR_TAKES_HASS = "hass" in inspect.signature(IntegrationSensor._
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     client: EcoflowApiClient = hass.data[ECOFLOW_DOMAIN][entry.entry_id]
+    from .api.public_api import EcoflowPublicApiClient
+
+    if isinstance(client, EcoflowPublicApiClient):
+        from .devices.public.stream_history import async_setup_stream_history
+
+        # STREAM system history: added once the system main SN is known
+        async_setup_stream_history(hass, entry, client, async_add_entities)
+
     for device in client.devices.values():
         sensors = device.sensors(client)
         # Add regular sensors
