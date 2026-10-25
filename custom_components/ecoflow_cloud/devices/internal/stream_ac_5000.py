@@ -1,4 +1,7 @@
-"""EcoFlow STREAM AC 5000 (SN prefix ``ES22``) -- internal/App API.
+"""EcoFlow STREAM AC 5000 (SN prefix ``ES22``) and STREAM 5000 (``ES21``) -- internal/App API.
+
+The STREAM 5000 is the same family with MPPT inputs: same telemetry, plus PV
+total and per-string power in block 50.1. PV entities are only offered for it.
 
 Transport: MQTT topic ``/app/device/property/<SN>``, envelope protobuf
 ``StreamACSendHeaderMsg`` from ``proto/stream_ac_pb2.py`` -- the same envelope
@@ -16,10 +19,14 @@ skipped, never mislabelled.
 Field meanings were decoded from MQTT captures anchored to app readings; the
 commit history carries the evidence for each. Blocks 60/61/62 (``cmd_id`` 40)
 are deliberately left undecoded.
+
+Blocks 50.1 and 54.1 carry one entry per linked unit, stamped with its serial.
+On a linked pair the master's frames carry both units' entries, so each entry
+is read on its own and only the one with this device's serial is used.
 """
 
 import logging
-from typing import Any, Iterator, override
+from typing import Any, Iterable, Iterator, override
 
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import Message as ProtoMessageRaw
@@ -88,6 +95,24 @@ _KEY_PACK_SOC = "packSoc"
 # otherwise leave every meter sensor holding a stale reading.
 _KEY_METER_LINK = "meterLinkUp"
 
+# Device types / serial prefix of the family member with PV inputs (STREAM 5000).
+_PV_DEVICE_TYPES = {"STREAM_5000"}
+_PV_SN_PREFIX = "ES21"
+
+# Block 50.1 PV fields; protobuf field name doubles as the parameter key.
+_KEY_PV_TOTAL = "pvPower"
+_PV_STRING_KEYS = ("pv1Power", "pv2Power", "pv3Power", "pv4Power")
+_PV_KEYS = (_KEY_PV_TOTAL, *_PV_STRING_KEYS)
+# How far the strings present may sum away from the total before an absent
+# string stops counting as idle. The unit's own entry matches exactly; a copy
+# relayed by a linked unit is rounded by 1-2 W and has been seen dropping a
+# string that was producing ~22 W.
+_PV_TOTAL_SLACK_W = 2.5
+
+# Block 50.1 power fields that read 0 W when an entry arrives without them.
+_KEY_BATTERY_NET_POWER = "batteryNetPower"
+_KEY_AC_GRID_POWER = "acGridPower"
+
 
 class StreamAC5000CommandMessage(PrivateAPIMessageProtocol):
     """One property write, in the envelope the EcoFlow app uses."""
@@ -147,6 +172,40 @@ def _read_varint(buf: bytes, pos: int) -> tuple[int, int]:
             raise ValueError("varint too long")
 
 
+def _own_entry(entries: Iterable[Any], sn: str) -> Any | None:
+    """Return the per-unit entry stamped with ``sn``, or None.
+
+    Never falls back to another unit's entry: on a linked pair that would show
+    one unit's readings on the other.
+    """
+    wanted = sn.strip().upper()
+    for entry in entries:
+        if entry.sn.strip().upper() == wanted:
+            return entry
+    return None
+
+
+def _pv_values(entry: Any) -> dict[str, float]:
+    """PV total and string power of one block 50.1 entry.
+
+    An idle string is omitted from the wire, so an absent string reads 0 W only
+    while the strings present add up to the total. Otherwise a producing string
+    was left out of this frame and its key stays out, keeping the last reading.
+    An entry with neither total nor strings is the night shape: all 0 W.
+    """
+    values = {key: float(getattr(entry, key)) for key in _PV_KEYS if entry.HasField(key)}
+    if not values:
+        return dict.fromkeys(_PV_KEYS, 0.0)
+    total = values.get(_KEY_PV_TOTAL)
+    if total is None:
+        return values
+    strings = sum(value for key, value in values.items() if key != _KEY_PV_TOTAL)
+    if abs(total - strings) <= _PV_TOTAL_SLACK_W:
+        for key in _PV_STRING_KEYS:
+            values.setdefault(key, 0.0)
+    return values
+
+
 def _iter_packets(payload: bytes) -> Iterator[Any]:
     """Split a payload into EcoPackets and yield each parsed header.
 
@@ -173,6 +232,22 @@ def _iter_packets(payload: bytes) -> Iterator[Any]:
 
 
 class StreamAC5000(BaseInternalDevice):
+    def _has_pv_inputs(self) -> bool:
+        sn = self.device_info.sn.strip().upper()
+        return self.device_data.device_type in _PV_DEVICE_TYPES or sn.startswith(_PV_SN_PREFIX)
+
+    def _pv_sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
+        if not self._has_pv_inputs():
+            # The STREAM AC 5000 has no MPPT, so these would never read anything.
+            return []
+        return [
+            WattsSensorEntity(client, self, _KEY_PV_TOTAL, const.STREAM_POWER_PV_SUM),
+            WattsSensorEntity(client, self, "pv1Power", const.STREAM_POWER_PV_1),
+            WattsSensorEntity(client, self, "pv2Power", const.STREAM_POWER_PV_2),
+            WattsSensorEntity(client, self, "pv3Power", const.STREAM_POWER_PV_3),
+            WattsSensorEntity(client, self, "pv4Power", const.STREAM_POWER_PV_4),
+        ]
+
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         return [
             # --- battery ------------------------------------------------
@@ -189,10 +264,11 @@ class StreamAC5000(BaseInternalDevice):
             RemainSensorEntity(client, self, "bmsChgRemTime", const.CHARGE_REMAINING_TIME, False),
             RemainSensorEntity(client, self, "bmsDsgRemTime", const.DISCHARGE_REMAINING_TIME, False),
             # --- power --------------------------------------------------
-            WattsSensorEntity(client, self, "gridPortPower", const.STREAM_AC5000_GRID_PORT_POWER),
-            # Unsigned magnitude; the device has no signed variant. Direction has
-            # to come from Grid Port Power's sign.
+            WattsSensorEntity(client, self, _KEY_BATTERY_NET_POWER, const.STREAM_AC5000_BATTERY_NET_POWER),
+            WattsSensorEntity(client, self, _KEY_AC_GRID_POWER, const.STREAM_AC5000_AC_GRID_POWER),
+            # Unsigned magnitude from the CMS/BMS; Battery Net Power carries the sign.
             WattsSensorEntity(client, self, "bpPower", const.STREAM_AC5000_BATTERY_POWER),
+            *self._pv_sensors(client),
             WattsSensorEntity(client, self, "maxChgPow", const.STREAM_AC5000_CHARGE_POWER_LIMIT, False),
             WattsSensorEntity(client, self, "maxDsgPow", const.STREAM_AC5000_MAX_DISCHARGE_POWER, False),
             # feedGridModePowLimit is writable and lives in numbers().
@@ -369,22 +445,22 @@ class StreamAC5000(BaseInternalDevice):
 
     def _decode_pdata(self, cmd_id: int, pdata: bytes, params: dict[str, Any]) -> None:
         if cmd_id == _CMD_ID_STATUS:
-            message = stream_ac_5000_pb2.StreamAC5000StatusPack()
-            message.ParseFromString(pdata)
+            status = stream_ac_5000_pb2.StreamAC5000StatusPack()
+            status.ParseFromString(pdata)
             # This frame's SoC is the pack scale, not the app-facing one.
-            self._copy(message.battery, params, "cmsMaxChgSoc", "bmsChgRemTime", "bmsDsgRemTime")
-            self._copy(message.battery, params, ("f32ShowSoc", _KEY_PACK_SOC), "cmsMinDsgSoc")
+            self._copy(status.battery, params, "cmsMaxChgSoc", "bmsChgRemTime", "bmsDsgRemTime")
+            self._copy(status.battery, params, ("f32ShowSoc", _KEY_PACK_SOC), "cmsMinDsgSoc")
 
         elif cmd_id == _CMD_ID_RUNTIME:
-            message = stream_ac_5000_pb2.StreamAC5000Runtime()
-            message.ParseFromString(pdata)
-            self._decode_runtime(message, params)
+            runtime = stream_ac_5000_pb2.StreamAC5000Runtime()
+            runtime.ParseFromString(pdata)
+            self._decode_runtime(runtime, params)
 
         elif cmd_id == _CMD_ID_PACK:
-            message = stream_ac_5000_pb2.StreamAC5000Pack()
-            message.ParseFromString(pdata)
+            pack = stream_ac_5000_pb2.StreamAC5000Pack()
+            pack.ParseFromString(pdata)
             self._copy(
-                message,
+                pack,
                 params,
                 ("f32ShowSoc", _KEY_PACK_SOC),
                 "realSoh",
@@ -440,8 +516,12 @@ class StreamAC5000(BaseInternalDevice):
         )
         self._copy(message.cms, params, "cmsBattFullEnergy", "remainTime")
         # Block 54 owns soc: same scale as block 44 but sent far more often.
-        self._copy(message.statPack.stat, params, "soc")
-        self._copy(message.powerPack.power, params, "gridPortPower")
+        stat = _own_entry(message.statPack.stat, self.device_info.sn)
+        if stat is not None:
+            self._copy(stat, params, "soc")
+        power = _own_entry(message.powerPack.power, self.device_info.sn)
+        if power is not None:
+            self._decode_unit_power(power, params)
         self._copy(message.deviceCfg, params, "upsEnabled", ("xboostEnabled", _KEY_XBOOST))
         self._copy(message.powerLimits, params, "feedGridModePowLimit", "chgPowLimit")
         self._copy(message.acOut, params, ("enabled", _KEY_AC_OUT))
@@ -452,6 +532,14 @@ class StreamAC5000(BaseInternalDevice):
             if source.HasField(field):
                 params["bpPower"] = getattr(source, field) / 2
                 break
+
+    def _decode_unit_power(self, entry: Any, params: dict[str, Any]) -> None:
+        # An entry that arrives without them is a unit moving nothing (the
+        # night shape), so they read 0 W rather than holding the last value.
+        params[_KEY_BATTERY_NET_POWER] = entry.batteryPower
+        params[_KEY_AC_GRID_POWER] = entry.acGridPower
+        if self._has_pv_inputs():
+            params.update(_pv_values(entry))
 
     @staticmethod
     def _copy(source: Any, params: dict[str, Any], *fields: str | tuple[str, str]) -> None:

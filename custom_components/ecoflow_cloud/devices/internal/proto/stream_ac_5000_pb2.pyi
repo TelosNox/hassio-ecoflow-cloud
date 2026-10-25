@@ -1,6 +1,8 @@
+from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -109,36 +111,48 @@ class StreamAC5000Cms(_message.Message):
     def __init__(self, soc: _Optional[int] = ..., cmsPowerHalfW: _Optional[int] = ..., cmsBattFullEnergy: _Optional[int] = ..., remainTime: _Optional[int] = ...) -> None: ...
 
 class StreamAC5000DevicePower(_message.Message):
-    __slots__ = ("sn", "soc", "gridPortPower")
+    __slots__ = ("sn", "soc", "pvPower", "batteryPower", "acGridPower", "pv1Power", "pv2Power", "pv3Power", "pv4Power")
     SN_FIELD_NUMBER: _ClassVar[int]
     SOC_FIELD_NUMBER: _ClassVar[int]
-    GRIDPORTPOWER_FIELD_NUMBER: _ClassVar[int]
+    PVPOWER_FIELD_NUMBER: _ClassVar[int]
+    BATTERYPOWER_FIELD_NUMBER: _ClassVar[int]
+    ACGRIDPOWER_FIELD_NUMBER: _ClassVar[int]
+    PV1POWER_FIELD_NUMBER: _ClassVar[int]
+    PV2POWER_FIELD_NUMBER: _ClassVar[int]
+    PV3POWER_FIELD_NUMBER: _ClassVar[int]
+    PV4POWER_FIELD_NUMBER: _ClassVar[int]
     sn: str
     soc: float
-    gridPortPower: float
-    def __init__(self, sn: _Optional[str] = ..., soc: _Optional[float] = ..., gridPortPower: _Optional[float] = ...) -> None: ...
+    pvPower: float
+    batteryPower: float
+    acGridPower: float
+    pv1Power: float
+    pv2Power: float
+    pv3Power: float
+    pv4Power: float
+    def __init__(self, sn: _Optional[str] = ..., soc: _Optional[float] = ..., pvPower: _Optional[float] = ..., batteryPower: _Optional[float] = ..., acGridPower: _Optional[float] = ..., pv1Power: _Optional[float] = ..., pv2Power: _Optional[float] = ..., pv3Power: _Optional[float] = ..., pv4Power: _Optional[float] = ...) -> None: ...
 
 class StreamAC5000PowerPack(_message.Message):
     __slots__ = ("power",)
     POWER_FIELD_NUMBER: _ClassVar[int]
-    power: StreamAC5000DevicePower
-    def __init__(self, power: _Optional[_Union[StreamAC5000DevicePower, _Mapping]] = ...) -> None: ...
+    power: _containers.RepeatedCompositeFieldContainer[StreamAC5000DevicePower]
+    def __init__(self, power: _Optional[_Iterable[_Union[StreamAC5000DevicePower, _Mapping]]] = ...) -> None: ...
 
 class StreamAC5000DeviceStat(_message.Message):
-    __slots__ = ("sn", "soc", "gridPortPowerHalfW")
+    __slots__ = ("sn", "soc", "batteryPowerHalfW")
     SN_FIELD_NUMBER: _ClassVar[int]
     SOC_FIELD_NUMBER: _ClassVar[int]
-    GRIDPORTPOWERHALFW_FIELD_NUMBER: _ClassVar[int]
+    BATTERYPOWERHALFW_FIELD_NUMBER: _ClassVar[int]
     sn: str
     soc: int
-    gridPortPowerHalfW: int
-    def __init__(self, sn: _Optional[str] = ..., soc: _Optional[int] = ..., gridPortPowerHalfW: _Optional[int] = ...) -> None: ...
+    batteryPowerHalfW: int
+    def __init__(self, sn: _Optional[str] = ..., soc: _Optional[int] = ..., batteryPowerHalfW: _Optional[int] = ...) -> None: ...
 
 class StreamAC5000StatPack(_message.Message):
     __slots__ = ("stat",)
     STAT_FIELD_NUMBER: _ClassVar[int]
-    stat: StreamAC5000DeviceStat
-    def __init__(self, stat: _Optional[_Union[StreamAC5000DeviceStat, _Mapping]] = ...) -> None: ...
+    stat: _containers.RepeatedCompositeFieldContainer[StreamAC5000DeviceStat]
+    def __init__(self, stat: _Optional[_Iterable[_Union[StreamAC5000DeviceStat, _Mapping]]] = ...) -> None: ...
 
 class StreamAC5000Runtime(_message.Message):
     __slots__ = ("deviceCfg", "powerLimits", "acOut", "workMode", "meter", "sysConfig", "bmsPack", "cms", "powerPack", "statPack")

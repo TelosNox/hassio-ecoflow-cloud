@@ -433,9 +433,13 @@ STREAM_WIFI_RSSI = "WiFi Signal Strength"
 STREAM_FEED_GRID_MODE_POW_LIMIT = "Feed-in Power Limit"
 STREAM_FEED_GRID_MODE_POW_MAX = "Feed-in Power Max"
 
-# Stream AC 5000 (SN prefix "ES22", internal/App API)
-# >0 charging, <0 discharging -- opposite to STREAM_POWER_AC, hence its own name.
-STREAM_AC5000_GRID_PORT_POWER = "Grid Port Power"
+# Stream AC 5000 (SN prefix "ES22") and STREAM 5000 (SN prefix "ES21", same
+# family with PV inputs), internal/App API. PV strings reuse STREAM_POWER_PV_*.
+# Signed battery power: >0 charging, <0 discharging. Not the grid port: on a PV
+# unit it is PV minus what leaves through the AC grid connection.
+STREAM_AC5000_BATTERY_NET_POWER = "Battery Net Power"
+# >0 out of the unit to the house, <0 drawn from the grid.
+STREAM_AC5000_AC_GRID_POWER = "AC Grid Connection Power"
 STREAM_AC5000_BATTERY_POWER = "Battery Power"
 # Currently-allowed charge power; tapers as the pack fills, not a fixed rating.
 STREAM_AC5000_CHARGE_POWER_LIMIT = "Charge Power Limit"

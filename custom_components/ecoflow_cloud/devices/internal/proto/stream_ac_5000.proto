@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-// EcoFlow STREAM AC 5000 (SN prefix "ES22") -- internal/App API payloads.
+// EcoFlow STREAM AC 5000 (SN prefix "ES22") and STREAM 5000 (SN prefix "ES21",
+// the same family with MPPT inputs) -- internal/App API payloads.
 //
 // The MQTT envelope is shared with every other Stream device: reuse
 // StreamACSendHeaderMsg from stream_ac.proto. Only msg.pdata differs, and
@@ -89,27 +90,39 @@ message StreamAC5000Cms {
     optional uint32 remainTime = 7;         // minutes for the CURRENT direction
 }
 
-// Block 50.1 -- per-serial power.
+// Block 50.1 -- per-unit power, one entry per linked unit, keyed by serial.
+// On a linked pair one frame carries every unit's entry, so the entries must be
+// read one at a time and only the device's own serial used. Across the ES21 and
+// ES22 captures batteryPower == pvPower - acGridPower (- the AC socket load,
+// where one is plugged in), which is what pins .4 and .7 down. Without PV
+// (ES22) .3 is never sent and .4 is just -.7.
 message StreamAC5000DevicePower {
     optional string sn = 1;
     optional float soc = 2;
-    optional float gridPortPower = 4;  // W; >0 = into the port (charging),
-                                       //     <0 = out of the port (discharging)
+    optional float pvPower = 3;       // W, MPPT total; equals .9 + .10 + .11 + .12
+    optional float batteryPower = 4;  // W; >0 = charging, <0 = discharging
+    optional float acGridPower = 7;   // W; >0 = out of the unit to the house,
+                                      //     <0 = drawn from the grid
+    optional float pv1Power = 9;      // W, per PV string. An idle string is
+    optional float pv2Power = 10;     // omitted, and so is everything at night.
+    optional float pv3Power = 11;
+    optional float pv4Power = 12;
 }
 
 message StreamAC5000PowerPack {
-    optional StreamAC5000DevicePower power = 1;
+    repeated StreamAC5000DevicePower power = 1;
 }
 
-// Block 54.1 -- same power in half-watts, plus SoC.
+// Block 54.1 -- per-unit SoC and battery power in half-watts (magnitude), one
+// entry per linked unit like block 50.
 message StreamAC5000DeviceStat {
     optional string sn = 1;
     optional uint32 soc = 2;
-    optional uint32 gridPortPowerHalfW = 4;
+    optional uint32 batteryPowerHalfW = 4;
 }
 
 message StreamAC5000StatPack {
-    optional StreamAC5000DeviceStat stat = 1;
+    repeated StreamAC5000DeviceStat stat = 1;
 }
 
 message StreamAC5000Runtime {

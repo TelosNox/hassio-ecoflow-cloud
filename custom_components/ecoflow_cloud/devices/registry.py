@@ -94,6 +94,8 @@ devices: OrderedDict[str, Type[BaseDevice]] = OrderedDict[str, Type[BaseDevice]]
         # Distinct telemetry schema from the rest of the Stream family -- see
         # devices/internal/stream_ac_5000.py. Not an alias of STREAM_AC.
         "STREAM_AC_5000": internal_stream_ac_5000.StreamAC5000,
+        # STREAM 5000 (SN prefix ES21): same family and schema, with PV inputs.
+        "STREAM_5000": internal_stream_ac_5000.StreamAC5000,
         "STREAM_PRO": internal_stream_ac.StreamAC,
         "STREAM_ULTRA": internal_stream_ac.StreamAC,
         "STREAM_ULTRA_X": internal_stream_ac.StreamAC,
