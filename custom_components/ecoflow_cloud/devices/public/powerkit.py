@@ -15,6 +15,7 @@ from custom_components.ecoflow_cloud.sensor import (
     ChargingStateSensorEntity,
     CyclesSensorEntity,
     DeciMilliVoltSensorEntity,
+    EnergySensorEntity,
     FanSensorEntity,
     FrequencySensorEntity,
     InRawTotalWattsSolarSensorEntity,
@@ -345,14 +346,14 @@ class PowerKit(BaseDevice):
             ),
             MiscSensorEntity(client, self, "warnCode2", "Solar (3) Warn Code", True),
             TempSensorEntity(client, self, "hs2Temp", "Solar (3) Temperature", True),
-            MilliampSensorEntity(
+            EnergySensorEntity(
                 client,
                 self,
                 "chgEnergy",
-                "Solar Total Charge Current",
+                "Solar Total Charge Energy",
                 False,
-            ),  # Not in use
-            MilliampSensorEntity(client, self, "dayEnergy", "Solar Energy for Day", False),  # Not in use
+            ),
+            EnergySensorEntity(client, self, "dayEnergy", "Solar Energy for Day", False),
         ]
 
     def powerHubDCOutSensors(
@@ -409,9 +410,7 @@ class PowerKit(BaseDevice):
             MilliampSensorEntity(client, self, "batCurr", "DC In Battery Current", True),  # 78 DC input
             MilliVoltSensorEntity(client, self, "batVol", "DC In Battery Voltage", True),  # 53438 DC input
             MiscSensorEntity(client, self, "allowDsgOn", "DC Allow Discharge", True),  # 1 DC input
-            MilliampSensorEntity(
-                client, self, "dsgEnergy", "DC Discharge Energy", False
-            ),  # 789 Unsure what this one is. Could be some kind of total
+            EnergySensorEntity(client, self, "dsgEnergy", "DC Discharge Energy", False),  # 789 Wh, accumulated
             MiscSensorEntity(client, self, "dcInState", "DC In State", True),  # 0 DC input
             OutWattsSensorEntity(client, self, "dcInWatts", "DC In Power", True),  # 0 DC input
             MilliampSensorEntity(client, self, "dcInCurr", "DC In Current", True),  # 0 DC input
