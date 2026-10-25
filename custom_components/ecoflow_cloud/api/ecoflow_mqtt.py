@@ -30,9 +30,11 @@ class EcoflowMQTTClient:
         # topics outside the devices' own, e.g. the set_reply of a STREAM system's main unit
         self.__extra_topics: set[str] = set()
 
-        from homeassistant.components.mqtt.async_client import AsyncMQTTClient
-
-        self.__client: AsyncMQTTClient = AsyncMQTTClient(
+        # A plain paho client, not HA's AsyncMQTTClient: that one swaps paho's
+        # locks for no-ops because HA drives it from the event loop only. This
+        # client runs paho's own network thread (loop_start) and publishes from
+        # the event loop and executor threads, so it needs the locks.
+        self.__client = Client(
             client_id=self.__mqtt_info.client_id,
             reconnect_on_failure=True,
             clean_session=True,
@@ -40,7 +42,6 @@ class EcoflowMQTTClient:
         )
 
         # self.__client._connect_timeout = 15.0
-        self.__client.setup()
         self.__client.username_pw_set(self.__mqtt_info.username, self.__mqtt_info.password)
         self.__client.tls_set(certfile=None, keyfile=None, cert_reqs=ssl.CERT_REQUIRED)
         self.__client.tls_insecure_set(False)
