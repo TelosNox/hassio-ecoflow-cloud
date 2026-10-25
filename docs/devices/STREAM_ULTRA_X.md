@@ -12,7 +12,7 @@
 - Min Discharge Level (`cmsMinDsgSoc`)
 - Cycles (`cycles`)   _(disabled)_
 - Design Capacity (`designCap`)   _(disabled)_
-- Power Battery SOC (`f32ShowSoc`)
+- Battery Level (Precise) (`f32ShowSoc`)
 - Full Capacity (`fullCap`)   _(disabled)_
 - Power AC (`gridConnectionPower`)
 - Power Volts (`gridConnectionVol`)   _(disabled)_

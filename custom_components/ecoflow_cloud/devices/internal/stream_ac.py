@@ -190,7 +190,7 @@ class StreamAC(BaseInternalDevice):
             # Precise battery SoC (float). Stream AC emits this top-level; Stream
             # Ultra / Ultra X carry it inside the nested Champ_cmd21_2 message
             # (field 15), normalised onto this key by _normalize_champ_fields().
-            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_POWER_BATTERY_SOC),
+            LevelSensorEntity(client, self, "f32ShowSoc", const.STREAM_BATTERY_LEVEL_PRECISE),
             # "feedGridMode": 2,
             # "feedGridModePowLimit": 800,
             # "feedGridModePowMax": 800,

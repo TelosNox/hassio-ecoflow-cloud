@@ -1932,7 +1932,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles  _(disabled)_
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -1981,7 +1981,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles  _(disabled)_
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -2030,7 +2030,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles  _(disabled)_
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -2079,7 +2079,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles  _(disabled)_
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -3162,7 +3162,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -3200,7 +3200,7 @@ from Home Assistant.
 - Real State of Health  _(disabled)_
 - Remain Capacity  _(disabled)_
 - Remaining Time
-- Power Battery
+- Battery Level
 - State of Health
 - Power AC SYS
 - Battery Temperature
@@ -3235,7 +3235,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -3273,7 +3273,7 @@ from Home Assistant.
 - Real State of Health  _(disabled)_
 - Remain Capacity  _(disabled)_
 - Remaining Time
-- Power Battery
+- Battery Level
 - State of Health
 - Power AC SYS
 - Battery Temperature
@@ -3308,7 +3308,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -3346,7 +3346,7 @@ from Home Assistant.
 - Real State of Health  _(disabled)_
 - Remain Capacity  _(disabled)_
 - Remaining Time
-- Power Battery
+- Battery Level
 - State of Health
 - Power AC SYS
 - Battery Temperature
@@ -3381,7 +3381,7 @@ from Home Assistant.
 - Min Discharge Level
 - Cycles
 - Design Capacity  _(disabled)_
-- Power Battery SOC
+- Battery Level (Precise)
 - Full Capacity  _(disabled)_
 - Power AC
 - Power Volts  _(disabled)_
@@ -3419,7 +3419,7 @@ from Home Assistant.
 - Real State of Health  _(disabled)_
 - Remain Capacity  _(disabled)_
 - Remaining Time
-- Power Battery
+- Battery Level
 - State of Health
 - Power AC SYS
 - Battery Temperature

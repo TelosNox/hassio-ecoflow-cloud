@@ -13,7 +13,7 @@
 - Min Discharge Level (`cmsMinDsgSoc`)
 - Cycles (`cycles`)
 - Design Capacity (`designCap`)   _(disabled)_
-- Power Battery SOC (`f32ShowSoc`)
+- Battery Level (Precise) (`f32ShowSoc`)
 - Full Capacity (`fullCap`)   _(disabled)_
 - Power AC (`gridConnectionPower`)
 - Power Volts (`gridConnectionVol`)   _(disabled)_
@@ -51,7 +51,7 @@
 - Real State of Health (`realSoh`)   _(disabled)_
 - Remain Capacity (`remainCap`)   _(disabled)_
 - Remaining Time (`remainTime`)
-- Power Battery (`soc`)
+- Battery Level (`soc`)
 - State of Health (`soh`)
 - Power AC SYS (`sysGridConnectionPower`)
 - Battery Temperature (`temp`)
