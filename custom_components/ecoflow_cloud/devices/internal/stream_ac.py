@@ -26,6 +26,7 @@ from custom_components.ecoflow_cloud.sensor import (
     OutWattsSensorEntity,
     RemainSensorEntity,
     StateOfHealthSensorEntity,
+    StatusSensorEntity,
     StoredEnergyFromSocSensorEntity,
     TempSensorEntity,
     VoltSensorEntity,
@@ -361,7 +362,15 @@ class StreamAC(BaseInternalDevice):
             .attr("minCellVol", const.ATTR_MIN_CELL_VOLT, 0)
             .attr("maxCellVol", const.ATTR_MAX_CELL_VOLT, 0),
             # "waterInFlag": 0,
+            self._status_sensor(client),
         ]
+
+    def _status_sensor(self, client: EcoflowApiClient) -> StatusSensorEntity:
+        # Same cloud-side stall as the public StreamAC: on the app API, too,
+        # the STREAM only keeps reporting while the EcoFlow app is open
+        # (tolwi/hassio-ecoflow-cloud#908, #830). Without a status sensor
+        # nothing here noticed the silence or reconnected.
+        return StatusSensorEntity(client, self, reconnect_when_stale=True)
 
     # moduleWifiRssi
     def numbers(self, client: EcoflowApiClient) -> list[NumberEntity]:
