@@ -51,6 +51,10 @@ the device section below for the API mode you configured. When reporting a bug,
 include the API mode, device model, firmware version, and a diagnostic download
 from Home Assistant.
 
+STREAM systems on the `public_api` also get daily history (solar, home consumption,
+grid, battery, CO2, savings) as sensors and long-term statistics, see
+[STREAM system history](docs/stream_history.md).
+
 ## Disclaimers
 
 ⚠️ Originally developed for personal use without a goal to cover all available device attributes
