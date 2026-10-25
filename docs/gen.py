@@ -136,7 +136,8 @@ class DocumentationGenerator:
                 DeviceData(
                     DEVICE_SN,
                     DEVICE_NAME,
-                    DEVICE_TYPE,
+                    # the real type: some classes add entities per family member (e.g. STREAM 5000 PV)
+                    device_type,
                     device_options,
                     None,
                     None,

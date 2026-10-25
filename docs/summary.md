@@ -1968,7 +1968,7 @@
 
 </p></details>
 
-<details><summary> STREAM_5000 <i>(sensors: 31, binary_sensors: 1, switches: 3, sliders: 4, selects: 1)</i> </summary>
+<details><summary> STREAM_5000 <i>(sensors: 36, binary_sensors: 1, switches: 3, sliders: 4, selects: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -1983,6 +1983,11 @@
 - Battery Net Power
 - AC Grid Connection Power
 - Battery Power
+- Power PV Sum
+- Power PV 1
+- Power PV 2
+- Power PV 3
+- Power PV 4
 - Charge Power Limit  _(disabled)_
 - Max Discharge Power  _(disabled)_
 - Feed-in Power Max  _(disabled)_
@@ -2073,7 +2078,7 @@
 
 </p></details>
 
-<details><summary> STREAM_ULTRA <i>(sensors: 43)</i> </summary>
+<details><summary> STREAM_ULTRA <i>(sensors: 52)</i> </summary>
 <p>
 
 *Sensors*
@@ -2099,10 +2104,19 @@
 - Min Cell Volts  _(disabled)_
 - Out Power  _(disabled)_
 - System Battery Power
-- Power PV 1  _(auto)_
-- Power PV 2  _(auto)_
-- Power PV 3  _(auto)_
-- Power PV 4  _(auto)_
+- Power PV 1
+- Power PV 2
+- Power PV 3
+- Power PV 4
+- Power PV1 Volts  _(disabled)_
+- Power PV2 Volts  _(disabled)_
+- Power PV3 Volts  _(disabled)_
+- Power PV4 Volts  _(disabled)_
+- Power PV1 In Amps  _(disabled)_
+- Power PV2 In Amps  _(disabled)_
+- Power PV3 In Amps  _(disabled)_
+- Power PV4 In Amps  _(disabled)_
+- Power PV Total (energy:  _[Device Name]_ PV Total Energy)
 - Power PV Sum
 - Power SCHUKO1  _(auto)_
 - Power SCHUKO2  _(auto)_
@@ -2123,7 +2137,7 @@
 
 </p></details>
 
-<details><summary> STREAM_ULTRA_X <i>(sensors: 43)</i> </summary>
+<details><summary> STREAM_ULTRA_X <i>(sensors: 52)</i> </summary>
 <p>
 
 *Sensors*
@@ -2149,10 +2163,19 @@
 - Min Cell Volts  _(disabled)_
 - Out Power  _(disabled)_
 - System Battery Power
-- Power PV 1  _(auto)_
-- Power PV 2  _(auto)_
-- Power PV 3  _(auto)_
-- Power PV 4  _(auto)_
+- Power PV 1
+- Power PV 2
+- Power PV 3
+- Power PV 4
+- Power PV1 Volts  _(disabled)_
+- Power PV2 Volts  _(disabled)_
+- Power PV3 Volts  _(disabled)_
+- Power PV4 Volts  _(disabled)_
+- Power PV1 In Amps  _(disabled)_
+- Power PV2 In Amps  _(disabled)_
+- Power PV3 In Amps  _(disabled)_
+- Power PV4 In Amps  _(disabled)_
+- Power PV Total (energy:  _[Device Name]_ PV Total Energy)
 - Power PV Sum
 - Power SCHUKO1  _(auto)_
 - Power SCHUKO2  _(auto)_
