@@ -31,7 +31,7 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         self.access_key = access_key.strip()
         self.secret_key = secret_key.strip()
         self.group = group
-        self.nonce = str(random.randint(10000, 1000000))
+        self.nonce = self._gen_nonce()
         self.timestamp = str(int(time.time() * 1000))
 
     async def login(self):
@@ -45,7 +45,15 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         response = await self.call_api("/device/list")
         _LOGGER.info(f"Received devices: \n {response}")
         result = []
-        for device in response["data"]:
+        # "data" is optional in the documented response and absent when the
+        # account has no devices of its own: shared devices are not listed
+        devices = response.get("data") or []
+        if not devices:
+            _LOGGER.warning(
+                "EcoFlow lists no devices for this developer account. Only devices bound to the "
+                "account the developer keys belong to are listed, not devices shared with it"
+            )
+        for device in devices:
             _LOGGER.debug(str(device))
             sn = device["sn"]
             product_name = device.get("productName", "undefined")
@@ -79,8 +87,13 @@ class EcoflowPublicApiClient(EcoflowApiClient):
             except Exception:
                 _LOGGER.exception("Error retrieving %s", sn)
 
+    @staticmethod
+    def _gen_nonce() -> str:
+        # EcoFlow specifies the nonce header as a 6-digit random number
+        return str(random.randint(100000, 999999))
+
     async def call_api(self, endpoint: str, params: dict[str, str] | None = None) -> dict:
-        self.nonce = str(random.randint(10000, 1000000))
+        self.nonce = self._gen_nonce()
         self.timestamp = str(int(time.time() * 1000))
         async with aiohttp.ClientSession() as session:
             params_str = ""
