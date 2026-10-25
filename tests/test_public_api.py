@@ -53,3 +53,43 @@ def test_device_list_without_data_is_empty(monkeypatch):
     monkeypatch.setattr(client, "call_api", call_api)
 
     assert asyncio.run(client.fetch_all_available_devices()) == []
+
+
+class _FakeResponse:
+    status = 200
+    reason = "OK"
+
+    async def json(self):
+        return {"code": "0", "message": "Success", "data": {"sn": "BK31"}}
+
+
+class _FakeGet:
+    async def __aenter__(self):
+        return _FakeResponse()
+
+    async def __aexit__(self, *args):
+        return False
+
+
+class _FakeSession:
+    def __init__(self):
+        self.urls: list[str] = []
+
+    def get(self, url, headers):
+        self.urls.append(url)
+        return _FakeGet()
+
+
+def test_calls_reuse_the_given_session(monkeypatch):
+    # tolwi#886: a new ClientSession per call means a new connection and DNS lookup each time
+    def no_new_session(*args, **kwargs):
+        raise AssertionError("a new aiohttp session was opened")
+
+    monkeypatch.setattr(public_api.aiohttp, "ClientSession", no_new_session)
+    session = _FakeSession()
+    client = EcoflowPublicApiClient("api-e.ecoflow.com", "ak", "sk", "Home", session)  # type: ignore[arg-type]
+
+    asyncio.run(client.call_api("/device/system/main/sn", {"sn": "BK61"}))
+    asyncio.run(client.call_api("/device/system/main/sn", {"sn": "BK61"}))
+
+    assert session.urls == ["https://api-e.ecoflow.com/iot-open/sign/device/system/main/sn?sn=BK61"] * 2

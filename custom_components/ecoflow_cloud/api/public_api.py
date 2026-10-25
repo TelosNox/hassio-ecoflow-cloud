@@ -24,8 +24,18 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class EcoflowPublicApiClient(EcoflowApiClient):
-    def __init__(self, api_domain: str, access_key: str, secret_key: str, group: str):
+    def __init__(
+        self,
+        api_domain: str,
+        access_key: str,
+        secret_key: str,
+        group: str,
+        session: aiohttp.ClientSession | None = None,
+    ):
         super().__init__()
+        # HA's shared session keeps connections (and DNS results) alive between
+        # the polls; without one, each call opens and closes its own (tolwi#886)
+        self._session = session
         self.api_domain = api_domain
         # strip here too: entries stored before the config flow sanitized them
         self.access_key = access_key.strip()
@@ -43,7 +53,7 @@ class EcoflowPublicApiClient(EcoflowApiClient):
     async def fetch_all_available_devices(self) -> list[EcoflowDeviceInfo]:
         _LOGGER.info("Requesting all devices")
         response = await self.call_api("/device/list")
-        _LOGGER.info(f"Received devices: \n {response}")
+        _LOGGER.debug("Received devices: %s", response)
         result = []
         # "data" is optional in the documented response and absent when the
         # account has no devices of its own: shared devices are not listed
@@ -93,35 +103,43 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         return str(random.randint(100000, 999999))
 
     async def call_api(self, endpoint: str, params: dict[str, str] | None = None) -> dict:
+        if self._session is not None:
+            return await self._call_api(self._session, endpoint, params)
+        async with aiohttp.ClientSession() as session:
+            return await self._call_api(session, endpoint, params)
+
+    async def _call_api(
+        self, session: aiohttp.ClientSession, endpoint: str, params: dict[str, str] | None
+    ) -> dict:
         self.nonce = self._gen_nonce()
         self.timestamp = str(int(time.time() * 1000))
-        async with aiohttp.ClientSession() as session:
-            params_str = ""
-            if params is not None:
-                params_str = self.__sort_and_concat_params(params)
+        params_str = ""
+        if params is not None:
+            params_str = self.__sort_and_concat_params(params)
 
-            sign = self.__gen_sign(params_str)
+        sign = self.__gen_sign(params_str)
 
-            headers = {
-                "accessKey": self.access_key,
-                "nonce": self.nonce,
-                "timestamp": self.timestamp,
-                "sign": sign,
-            }
+        headers = {
+            "accessKey": self.access_key,
+            "nonce": self.nonce,
+            "timestamp": self.timestamp,
+            "sign": sign,
+        }
 
-            _LOGGER.debug("Request: %s %s.", str(endpoint), str(params_str))
-            resp = await session.get(
-                f"https://{self.api_domain}/iot-open/sign{endpoint}?{params_str}",
-                headers=headers,
-            )
+        _LOGGER.debug("Request: %s %s.", str(endpoint), str(params_str))
+        # the context manager releases the connection to the pool on every path
+        async with session.get(
+            f"https://{self.api_domain}/iot-open/sign{endpoint}?{params_str}",
+            headers=headers,
+        ) as resp:
             json_resp = await self._get_json_response(resp)
-            _LOGGER.debug(
-                "Request: %s %s. Response : %s",
-                str(endpoint),
-                str(params_str),
-                async_redact_data(json_resp, API_RESPONSE_TO_REDACT),
-            )
-            return json_resp
+        _LOGGER.debug(
+            "Request: %s %s. Response : %s",
+            str(endpoint),
+            str(params_str),
+            async_redact_data(json_resp, API_RESPONSE_TO_REDACT),
+        )
+        return json_resp
 
     async def fetch_main_sn(self, device_sn: str) -> str | None:
         # stream.md, "Obtain the main device serial number of the STREAM system":

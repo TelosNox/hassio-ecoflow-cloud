@@ -8,6 +8,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from custom_components.ecoflow_cloud.api import (
     EcoflowApiClient,
@@ -266,6 +267,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             entry.data[CONF_ACCESS_KEY],
             entry.data[CONF_SECRET_KEY],
             entry.data[CONF_GROUP],
+            async_get_clientsession(hass),
         )
     else:
         return False
