@@ -124,3 +124,15 @@ def test_private_api_keeps_the_message_check():
     assert _parse(client, {"code": "1006", "message": "Success"})
     with pytest.raises(EcoflowException):
         _parse(client, {"code": "0", "message": "ok"})
+
+
+class _BrokenResponse(_FakeResponse):
+    async def json(self):
+        raise ValueError("Expecting value")
+
+
+def test_parse_error_names_the_status_not_a_bound_method():
+    with pytest.raises(EcoflowException) as error:
+        asyncio.run(_client()._get_json_response(_BrokenResponse()))  # type: ignore[arg-type]
+
+    assert str(error.value) == "Failed to parse response (HTTP 200): Expecting value"

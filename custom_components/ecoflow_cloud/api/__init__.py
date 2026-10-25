@@ -132,7 +132,8 @@ class EcoflowApiClient(ABC):
         except KeyError as key:
             raise EcoflowException(f"Failed to extract key {key} from {resp}")
         except Exception as error:
-            raise EcoflowException(f"Failed to parse response: {resp.text} Error: {error}")
+            # resp.text is a coroutine method; formatting it printed "<bound method ...>"
+            raise EcoflowException(f"Failed to parse response (HTTP {resp.status}): {error}")
 
         raw_code = json_resp.get("code")
         code = None if raw_code is None else str(raw_code)
