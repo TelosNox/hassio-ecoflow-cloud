@@ -4,6 +4,8 @@ Reference: EcoFlow IoT Developer Platform, "General information" -
 "HTTP access steps" and "General HTTP Header".
 """
 
+import asyncio
+
 from custom_components.ecoflow_cloud.api import public_api
 from custom_components.ecoflow_cloud.api.public_api import EcoflowPublicApiClient
 
@@ -37,3 +39,17 @@ def test_flat_params_are_sorted_by_key():
     concat = client._EcoflowPublicApiClient__sort_and_concat_params  # type: ignore[attr-defined]
 
     assert concat({"sn": "123456789", "id": "24", "cmdSet": "11"}) == "cmdSet=11&id=24&sn=123456789"
+
+
+def test_device_list_without_data_is_empty(monkeypatch):
+    # "Query the user's bound device list": data is not a required field.
+    # EcoFlow answered this way in tolwi/hassio-ecoflow-cloud#791 and #598,
+    # which then failed with KeyError: 'data'.
+    client = _client()
+
+    async def call_api(endpoint, params=None):
+        return {"code": "0", "message": "Success"}
+
+    monkeypatch.setattr(client, "call_api", call_api)
+
+    assert asyncio.run(client.fetch_all_available_devices()) == []

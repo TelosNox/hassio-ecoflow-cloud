@@ -45,7 +45,15 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         response = await self.call_api("/device/list")
         _LOGGER.info(f"Received devices: \n {response}")
         result = []
-        for device in response["data"]:
+        # "data" is optional in the documented response and absent when the
+        # account has no devices of its own: shared devices are not listed
+        devices = response.get("data") or []
+        if not devices:
+            _LOGGER.warning(
+                "EcoFlow lists no devices for this developer account. Only devices bound to the "
+                "account the developer keys belong to are listed, not devices shared with it"
+            )
+        for device in devices:
             _LOGGER.debug(str(device))
             sn = device["sn"]
             product_name = device.get("productName", "undefined")
