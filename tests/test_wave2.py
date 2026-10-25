@@ -46,6 +46,9 @@ def test_mistyped_keys_read_the_documented_field_but_keep_their_unique_id() -> N
         ("pd-batPower ", "pd.batPower"),
         ("power-acPwrI", "power.acPwrIn"),
         ("power-mpptPwr ", "power.mpptPwr"),
+        ("bms-soc", "pd.batSoc"),
+        ("bms-minCellTmp", "bms.minCellTemp"),
+        ("bms-maxCellTmp", "bms.maxCellTemp"),
     ):
         entity = sensors[f"ecoflow-api-{SN}-{legacy_uid_suffix}"]
         assert entity.mqtt_key == documented_key

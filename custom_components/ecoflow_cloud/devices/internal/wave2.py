@@ -70,15 +70,22 @@ class Wave2(BaseInternalDevice):
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         return [
             # Power and Battery Entities
-            LevelSensorEntity(client, self, "bms.soc", const.MAIN_BATTERY_LEVEL).attr(
-                "bms.remainCap", const.ATTR_REMAIN_CAPACITY, 0
+            _legacy_unique_id(
+                LevelSensorEntity(client, self, "pd.batSoc", const.MAIN_BATTERY_LEVEL).attr(
+                    "bms.remainCap", const.ATTR_REMAIN_CAPACITY, 0
+                ),
+                "bms.soc",
             ),
             CapacitySensorEntity(client, self, "bms.remainCap", const.MAIN_REMAIN_CAPACITY, False),
             TempSensorEntity(client, self, "bms.tmp", const.BATTERY_TEMP)
             .attr("bms.minCellTemp", const.ATTR_MIN_CELL_TEMP, 0)
             .attr("bms.maxCellTemp", const.ATTR_MAX_CELL_TEMP, 0),
-            TempSensorEntity(client, self, "bms.minCellTmp", const.MIN_CELL_TEMP, False),
-            TempSensorEntity(client, self, "bms.maxCellTmp", const.MAX_CELL_TEMP, False),
+            _legacy_unique_id(
+                TempSensorEntity(client, self, "bms.minCellTemp", const.MIN_CELL_TEMP, False), "bms.minCellTmp"
+            ),
+            _legacy_unique_id(
+                TempSensorEntity(client, self, "bms.maxCellTemp", const.MAX_CELL_TEMP, False), "bms.maxCellTmp"
+            ),
             RemainSensorEntity(client, self, "pd.batChgRemain", const.CHARGE_REMAINING_TIME),
             RemainSensorEntity(client, self, "pd.batDsgRemain", const.DISCHARGE_REMAINING_TIME),
             # heat pump
