@@ -386,9 +386,17 @@ class Delta3(BaseInternalDevice):
             QuotaStatusSensorEntity(client, self),
         ]
 
+    def _ac_charging_power_range(self) -> tuple[int, int]:
+        # The Max Plus app slider runs 200-2400 W, read on three units
+        # (shuette42/ecoflow-energy-ha#100, #181); 1500 W stays for the others.
+        if self.device_data.device_type == "DELTA_3_MAX_PLUS":
+            return 200, 2400
+        return 100, 1500
+
     @override
     def numbers(self, client: EcoflowApiClient) -> list[NumberEntity]:
         device = self
+        ac_chg_min, ac_chg_max = self._ac_charging_power_range()
         return [
             MaxBatteryLevelEntity(
                 client,
@@ -413,8 +421,8 @@ class Delta3(BaseInternalDevice):
                 self,
                 "plug_in_info_ac_in_chg_pow_max",
                 const.AC_CHARGING_POWER,
-                100,
-                1500,
+                ac_chg_min,
+                ac_chg_max,
                 lambda value: _create_delta3_ac_charging_power_command(
                     int(value), device.device_data.sn
                 ),

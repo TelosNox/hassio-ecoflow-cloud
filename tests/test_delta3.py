@@ -1,5 +1,7 @@
 """Decode tests for the DELTA 3 family on the internal/App API."""
 
+from types import SimpleNamespace
+
 import pytest
 
 from custom_components.ecoflow_cloud.devices.internal.delta3 import Delta3
@@ -27,3 +29,13 @@ def test_bms_report_of_the_built_in_battery_is_kept(header):
 def test_bms_report_of_an_extra_battery_is_dropped(header):
     # shuette42/ecoflow-energy-ha#304: pack 1 sent its own lifetime totals into the same keys
     assert _decode(_bms_report(num=1, soc=57, cycles=9, accu_chg_energy=11147), header) == {}
+
+
+@pytest.mark.parametrize(
+    ("device_type", "expected"),
+    [("DELTA_3_MAX_PLUS", (200, 2400)), ("DELTA_3", (100, 1500))],
+)
+def test_ac_charging_power_range(device_type, expected):
+    device = Delta3.__new__(Delta3)
+    device.device_data = SimpleNamespace(device_type=device_type)
+    assert device._ac_charging_power_range() == expected
