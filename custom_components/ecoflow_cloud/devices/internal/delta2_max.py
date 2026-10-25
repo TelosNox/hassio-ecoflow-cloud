@@ -372,7 +372,9 @@ class Delta2Max(BaseInternalDevice):
                     "moduleType": 3,
                     "operateType": "acOutCfg",
                     "moduleSn": self.device_info.sn,
-                    "params": {"xboost": value},
+                    # The device ignores acOutCfg unless all four fields are present;
+                    # 255 / 4294967295 leave the AC switch, voltage and frequency unchanged.
+                    "params": {"enabled": 255, "out_voltage": 4294967295, "out_freq": 255, "xboost": value},
                 },
             ),
             EnabledEntity(
