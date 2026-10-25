@@ -495,6 +495,21 @@ class EnergySensorEntity(BaseSensorEntity):
             return False
 
 
+class NetEnergySensorEntity(BaseSensorEntity):
+    """Lifetime import minus export: it falls while exporting and may go below zero.
+
+    TOTAL_INCREASING would book every fall as a meter reset and count the
+    standing total again, so it is a TOTAL.
+    """
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL
+
+    def _update_value(self, val: Any) -> bool:
+        return super()._update_value(int(val))
+
+
 class EnergyStorageSensorEntity(BaseSensorEntity):
     _attr_device_class = SensorDeviceClass.ENERGY_STORAGE
     _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR

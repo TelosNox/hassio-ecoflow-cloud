@@ -14,6 +14,7 @@ from custom_components.ecoflow_cloud.sensor import (
     EnergySensorEntity,
     InAmpSensorEntity,
     MiscSensorEntity,
+    NetEnergySensorEntity,
     QuotaStatusSensorEntity,
     VoltSensorEntity,
     WattsSensorEntity,
@@ -35,19 +36,19 @@ class SmartMeter(BaseDevice):
             VoltSensorEntity(client, self, "gridConnectionVolL1", const.SMART_METER_VOLT_L1, False),
             VoltSensorEntity(client, self, "gridConnectionVolL2", const.SMART_METER_VOLT_L2, False),
             VoltSensorEntity(client, self, "gridConnectionVolL3", const.SMART_METER_VOLT_L3, False),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client, self, "gridConnectionDataRecord.todayActiveL1", const.SMART_METER_RECORD_TODAY_ACTIVE_L1, False
             ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client, self, "gridConnectionDataRecord.todayActiveL2", const.SMART_METER_RECORD_TODAY_ACTIVE_L2, False
             ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client, self, "gridConnectionDataRecord.todayActiveL3", const.SMART_METER_RECORD_TODAY_ACTIVE_L3, False
             ),
             EnergySensorEntity(
                 client, self, "gridConnectionDataRecord.todayActive", const.SMART_METER_RECORD_ACTIVE_TODAY
             ),
-            EnergySensorEntity(
+            NetEnergySensorEntity(
                 client,
                 self,
                 "gridConnectionDataRecord.totalActiveEnergy",
