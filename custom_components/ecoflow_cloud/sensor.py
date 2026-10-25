@@ -726,6 +726,10 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
         # cloud-side stall reconnect on stale data alone.
         self._reconnect_when_stale = reconnect_when_stale
         self._reconnect_since = dt.utcnow()
+        # One stale reconnect per silence: set once it ran, cleared by the
+        # next telemetry, so a device that is really offline is not
+        # reconnected every assume_offline_sec forever.
+        self._stale_reconnect_done = False
         self._last_poll = dt.utcnow().replace(year=2000, month=1, day=1, hour=0, minute=0, second=0)
         self._last_scheduled = dt.utcnow()
         self._poll_count = 0
@@ -780,13 +784,18 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
 
     def _schedule_mqtt_reconnect(self) -> bool:
         threshold = self._tracker.assume_offline_sec
+        last_telemetry = self._tracker.last_telemetry_time
 
-        # _reconnect_since covers the two moments where last_data_time is no
+        if last_telemetry > self._reconnect_since:
+            self._stale_reconnect_done = False
+
+        # _reconnect_since covers the two moments where last_telemetry is no
         # reference -- just after setup and just after a reconnect -- which
         # would otherwise look infinitely stale and reconnect straight away.
-        reference = max(self._tracker.last_data_time, self._reconnect_since)
+        reference = max(last_telemetry, self._reconnect_since)
         data_stale = (
             self._reconnect_when_stale
+            and not self._stale_reconnect_done
             and (dt.utcnow() - reference).total_seconds() >= threshold
         )
 
@@ -796,6 +805,8 @@ class StatusSensorEntity(SensorEntity, EcoFlowAbstractDataEntity):  # type: igno
         if reconnect_count is None:
             return False
 
+        if data_stale:
+            self._stale_reconnect_done = True
         self._reconnect_since = dt.utcnow()
         self._attrs[ATTR_STATUS_RECONNECTS] = reconnect_count
         self.hass.async_create_background_task(
@@ -838,8 +849,9 @@ class QuotaStatusSensorEntity(StatusSensorEntity):
         device: BaseDevice,
         title: str = "Status",
         key: str = "status",
+        reconnect_when_stale: bool = False,
     ):
-        super().__init__(client, device, title, key, poll_when_silent=True)
+        super().__init__(client, device, title, key, poll_when_silent=True, reconnect_when_stale=reconnect_when_stale)
 
 
 class QuotaScheduledStatusSensorEntity(QuotaStatusSensorEntity):
