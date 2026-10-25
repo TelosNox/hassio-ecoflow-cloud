@@ -3089,7 +3089,7 @@
 
 </p></details>
 
-<details><summary> Stream AC (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream AC (API) <i>(sensors: 57, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3133,6 +3133,7 @@
 - Power PV3 In Amps  _(auto)_
 - Power PV4 In Amps  _(auto)_
 - Power PV Sum
+- Power PV Total (energy:  _[Device Name]_ PV Total Energy)
 - Power SCHUKO1  _(auto)_
 - Power SCHUKO2  _(auto)_
 - Power Grid
@@ -3162,7 +3163,7 @@
 
 </p></details>
 
-<details><summary> Stream PRO (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream PRO (API) <i>(sensors: 57, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3206,6 +3207,7 @@
 - Power PV3 In Amps  _(auto)_
 - Power PV4 In Amps  _(auto)_
 - Power PV Sum
+- Power PV Total (energy:  _[Device Name]_ PV Total Energy)
 - Power SCHUKO1  _(auto)_
 - Power SCHUKO2  _(auto)_
 - Power Grid
@@ -3235,7 +3237,7 @@
 
 </p></details>
 
-<details><summary> Stream Ultra (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream Ultra (API) <i>(sensors: 57, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3279,6 +3281,7 @@
 - Power PV3 In Amps  _(auto)_
 - Power PV4 In Amps  _(auto)_
 - Power PV Sum
+- Power PV Total (energy:  _[Device Name]_ PV Total Energy)
 - Power SCHUKO1  _(auto)_
 - Power SCHUKO2  _(auto)_
 - Power Grid
@@ -3308,7 +3311,7 @@
 
 </p></details>
 
-<details><summary> Stream Ultra X (API) <i>(sensors: 56, switches: 5, sliders: 1)</i> </summary>
+<details><summary> Stream Ultra X (API) <i>(sensors: 57, switches: 5, sliders: 1)</i> </summary>
 <p>
 
 *Sensors*
@@ -3352,6 +3355,7 @@
 - Power PV3 In Amps  _(auto)_
 - Power PV4 In Amps  _(auto)_
 - Power PV Sum
+- Power PV Total (energy:  _[Device Name]_ PV Total Energy)
 - Power SCHUKO1  _(auto)_
 - Power SCHUKO2  _(auto)_
 - Power Grid

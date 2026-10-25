@@ -29,6 +29,7 @@ from custom_components.ecoflow_cloud.sensor import (
     WattsSensorEntity,
 )
 from custom_components.ecoflow_cloud.devices.public.stream_pv_helpers import (
+    StreamPvTotalWattsSensorEntity,
     StreamPvWattsSensorEntity,
 )
 from custom_components.ecoflow_cloud.switch import EnabledEntity
@@ -232,6 +233,21 @@ class StreamAC(BaseDevice):
             AmpSensorEntity(client, self, "plugInInfoPv4Amp", const.STREAM_IN_AMPS_PV_4, False, True),
             # "powGetPvSum": 2051.3975,
             WattsSensorEntity(client, self, "powGetPvSum", const.STREAM_POWER_PV_SUM),
+            # Per-unit PV total over all four strings, plus its energy. The
+            # device reports no cumulative PV energy counter, so the energy is
+            # a Riemann sum computed in Home Assistant - disabled by default
+            # (tolwi/hassio-ecoflow-cloud#842, #808).
+            StreamPvTotalWattsSensorEntity(
+                client,
+                self,
+                [
+                    ("plugInInfoPvAmp", "plugInInfoPvVol", "powGetPv"),
+                    ("plugInInfoPv2Amp", "plugInInfoPv2Vol", "powGetPv2"),
+                    ("plugInInfoPv3Amp", "plugInInfoPv3Vol", "powGetPv3"),
+                    ("plugInInfoPv4Amp", "plugInInfoPv4Vol", "powGetPv4"),
+                ],
+                const.STREAM_POWER_PV_TOTAL,
+            ).with_energy(enabled_default=False, energy_title=const.STREAM_PV_TOTAL_ENERGY),
             # "powGetSchuko1": 0.0,
             WattsSensorEntity(client, self, "powGetSchuko1", const.STREAM_GET_SCHUKO1, False, True),
             # "powGetSchuko2": 18.654325,

@@ -41,6 +41,7 @@
 - Power PV3 In Amps (`plugInInfoPv3Amp`)   _(auto)_
 - Power PV4 In Amps (`plugInInfoPv4Amp`)   _(auto)_
 - Power PV Sum (`powGetPvSum`)
+- Power PV Total (`pvWattsTotal`) (energy:  _[Device Name]_ PV Total Energy)
 - Power SCHUKO1 (`powGetSchuko1`)   _(auto)_
 - Power SCHUKO2 (`powGetSchuko2`)   _(auto)_
 - Power Grid (`powGetSysGrid`)
