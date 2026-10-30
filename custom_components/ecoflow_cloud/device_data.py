@@ -11,6 +11,8 @@ class DeviceOptions:
     verbose_status_mode: bool
     assume_offline_sec: int
     reset_sensors_on_offline: bool
+    # seconds between reports of an energy sensor, 0 = every update
+    energy_update_interval: int = 0
     # STREAM: how far back the first statistics import of the system history reaches
     history_backfill_days: int = 90
 

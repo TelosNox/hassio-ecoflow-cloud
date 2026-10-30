@@ -189,6 +189,8 @@ class OutWattsAbsSensorEntity(OutWattsSensorEntity):
 class River3(BaseInternalDevice):
     """EcoFlow River 3 device implementation using protobuf decoding."""
 
+    _reports_bms_soh: bool = False
+
     @staticmethod
     def default_charging_power_step() -> int:
         return 50
@@ -448,9 +450,8 @@ class River3(BaseInternalDevice):
         # Status messages and command replies can be JSON rather than protobuf.
         # Anything else is protobuf: handing it to the JSON parser only logs a
         # WARNING + ERROR pair per message (issues #872, #936) and yields {}.
-        # Check the first byte only: protobuf frames start with 0x0a, which
-        # lstrip() would remove as whitespace (see DELTA Pro 3, #925).
-        if raw_data.startswith(b"{"):
+        # No lstrip(): it strips a 0x0a tag, so a 123-byte protobuf header would look like JSON.
+        if raw_data[:1] == b"{":
             return super()._prepare_data(raw_data)
 
         try:
@@ -475,6 +476,15 @@ class River3(BaseInternalDevice):
                     merged["cfg_ac_out_open"] = (
                         1 if merged["output_power_off_memory"] else 0
                     )
+
+            # Some RIVER 3 units never send bms_batt_soh and report the
+            # battery's state of health only as cms_batt_soh (issue #936).
+            # Fill the SOH sensor from it until the device has shown that it
+            # sends bms_batt_soh itself, which then always wins.
+            if "bms_batt_soh" in merged:
+                self._reports_bms_soh = True
+            elif not self._reports_bms_soh and "cms_batt_soh" in merged:
+                merged["bms_batt_soh"] = merged["cms_batt_soh"]
 
             flat = self._flatten_dict(merged)
             return {"params": flat, "all_fields": merged}

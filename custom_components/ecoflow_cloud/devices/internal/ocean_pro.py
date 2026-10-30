@@ -20,6 +20,9 @@ Both devices are read-only: sensors only, no control entities.
 """
 
 import logging
+import struct
+import time
+from collections.abc import Iterator
 from typing import Any, override
 
 from homeassistant.components.number import NumberEntity
@@ -31,16 +34,23 @@ from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.devices.internal.delta_pro_3 import DeltaPro3
 from custom_components.ecoflow_cloud.devices.internal.smart_home_panel_3 import (
     WIRE_F32,
-    WIRE_F64,
-    WIRE_VARINT,
     FieldMap,
     SmartHomePanel3,
     _first,
     _parse_fields,
 )
 from custom_components.ecoflow_cloud.sensor import (
+    AmpSensorEntity,
+    CentivoltSensorEntity,
+    FrequencySensorEntity,
+    InWattsSensorEntity,
+    MiscSensorEntity,
+    OutWattsSensorEntity,
+    QuotaScheduledStatusSensorEntity,
     QuotaStatusSensorEntity,
     SolarPowerSensorEntity,
+    TempSensorEntity,
+    VoltSensorEntity,
     WattsSensorEntity,
 )
 
@@ -68,28 +78,253 @@ PV_MAX_W = 5_500  # per-string MPPT ceiling; anything above is field-reuse noise
 # (negative = production/export).
 F_PCS_TOTAL = 53
 
-# Battery power is reported per pack in separate cmdFunc=32 / cmdId=177 frames:
-# field 44 = bp_power (W, signed: positive = charging, negative = discharging;
-# confirmed vs SoC direction, n=760), field 5 = pack slot index. Power adds
-# across packs, so track the last value per slot and sum.
-BATTERY_PACK_CMD = (32, 177)  # (cmdFunc, cmdId)
-F_BATT_SLOT = 5
-F_BATT_PWR = 44
-# field 44 usually carries a sane per-pack power (watts), but intermittently
-# emits an implausible spike (tens to hundreds of kW for a single pack) that the
-# per-slot sum then amplifies. Reject any read beyond a pack's realistic share of
-# the inverter's rating (~24 kW / 4 packs, with generous headroom) as decode
-# noise, and keep the slot's last good value — same guard used for PV strings.
-BATT_PACK_MAX_W = 10_000
+# Total solar power, 254/21 field 517 — the inverter's OWN sum of the MPPT strings.
+# Usually equals sum(pv1..8) to within 1 W, but under fast changes the two are not always
+# sampled together (up to ~1.2 kW apart in captures); field 518 battery power is built from
+# this total, not from the strings. Mirrored for parity with the mini collector (`solar_total`).
+F_SOLAR_TOTAL = 517
+SOLAR_TOTAL_MAX = PV_MAX_W * PV_STRINGS  # 8-string ceiling; above = field-reuse noise
+
+# Device temperatures, 254/21 fields 1553..1557 (dev_temperature_1..5 in the app proto), F32
+# degrees C. The proto names no location for any of the five, so they are numbered, not
+# labelled; on our captures they run 45-69 C in daytime. Guarded against field-number reuse.
+DEV_TEMP_FIELD_BASE = 1553
+DEV_TEMP_COUNT = 5
+DEV_TEMP_MIN, DEV_TEMP_MAX = -40.0, 150.0
+
+# Quota refresh cadence for BOTH devices. The Ocean Pro sends telemetry only in answer to a
+# `latestQuotas` request: a passive subscriber receives nothing. The inherited status sensors
+# ask only once the device has gone silent for assume_offline_sec (300 s by default), so alone
+# they would hold the feed to one burst per ~5 minutes. Any other client polling the same
+# account (the mobile app, a collector) masks this by keeping the stream awake, which is why
+# it went unnoticed. 10 s is the cadence the private collector has run at since 2026-07-22,
+# the regime every rate in this profile was observed under; each request is one small MQTT
+# publish. With the default 5 s coordinator tick it fires every 10-15 s.
+QUOTA_REFRESH_SEC = 10
+
+# Per-leg PCS AC telemetry on the SAME 254/21 stream (fields 1463..1468). A/B phase
+# assignment is provisional (per the meter-validated fieldmap). Voltage/current are
+# positive; per-leg power is signed and follows F_PCS_TOTAL (negative = production/export).
+# These leaf numbers recur inside unrelated nested submessages, so out-of-range values
+# are that reuse leaking through and are rejected (same guard idea as PV).
+PCS_LEG_FIELDS: dict[str, int] = {
+    "pcsA_voltage": 1463,
+    "pcsA_current": 1464,
+    "pcsB_voltage": 1465,
+    "pcsB_current": 1466,
+    "pcsA_power": 1467,
+    "pcsB_power": 1468,
+}
+PCS_V_MAX = 300.0  # split-phase leg is ~120-125 V; anything above is field-reuse noise
+PCS_A_MAX = 300.0  # per-leg current is well under 100 A; guard generously
+PCS_P_MAX = 20_000.0  # per-leg magnitude ceiling; abs above this is reuse noise
+
+# Battery power, 254/21 field 518 (pow_get_bp_cms in the app proto), F32 watts, signed
+# + = charging / - = discharging. It is the inverter's own DC-bus balance:
+#
+#     field 518 = total solar (field 517) + PCS total (field 53)
+#
+# which held in 687 of the 696 captured frames carrying 517 (the rest read exactly 0 with
+# the battery idle). It is sent only when it changes, so an absent field means "unchanged",
+# and the sensor keeps its value. It replaces two earlier approaches:
+# - Per-pack field 44 (cmdFunc=32 / cmdId=177) decodes to impossible values while charging
+#   (~122 kW per pack, ~15 kA), and clamping it froze the sensor for a whole charge.
+# - Recomputing sum(pv1..pv8) + PCS here drifted from the inverter's figure: the string
+#   powers and field 517 are not always sampled together (up to ~1.2 kW apart under fast
+#   changes), daytime frames without string fields dropped solar entirely, and an idle
+#   battery showed conversion residue instead of 0.
+F_BATT_PWR = 518
+BATT_P_MAX = 30_000.0  # bank charge/discharge peaks ~21 kW; abs above this is reuse noise
+
+# --- Battery pack: decoded the mini collector's PROVEN way ------------------
+# The per-pack scalars (cmdFunc=32/cmdId=177, decoded on OceanProInverter/HR51) are read by
+# flattening the WHOLE frame and matching the EXACT nested path ``1.1.<field>`` — the same
+# rule the utility-meter-validated collector uses — NOT a shallow top-level match on the leaf
+# number. These field numbers are small (slot=5) and recur inside unrelated nested
+# submessages, so a top-level-first match grabbed the wrong occurrence: it collapsed all packs
+# to one slot (reporting 1 pack, not 4).
+# Voltage (field 45) is a real measurement (10 mV/count -> V = /100, ~398 V, matching the
+# EF-BP-10 datasheet's 400 V / 380-550 V rating); pack count is a real count. Per-pack
+# current (field 43) has an unsettled scale, so it is surfaced RAW (no amp unit), and
+# field 44 is the impossible-value field the module note above rejects (battery power comes
+# from 254/21 field 518 instead). Each 32/177 message carries ONE pack, tagged by slot (a
+# single MQTT frame often batches several of them; see _decode_envelopes), so bank figures
+# accumulate per slot: voltage AVERAGES, current SUMS, packs = slot count.
+BATTERY_PACK_CMD = (32, 177)
+P_CMDFUNC, P_CMDID = "1.8", "1.9"  # header cmdFunc / cmdId in the flattened frame
+P_BP_SLOT = "1.1.5"  # 32/177: pack slot index
+P_BP_VOLTAGE = "1.1.45"  # 32/177: pack voltage, 10 mV/count -> V = /100
+P_BP_CURRENT = "1.1.43"  # 32/177: pack current, RAW (scale unsettled)
+BP_V_RAW_MIN, BP_V_RAW_MAX = 30_000.0, 60_000.0  # 300-600 V at /100; guard bad frames
+
+# --- Status frame (254/22): grid metering, DC-bus, fault register ------------
+# These ride cmdFunc=254 cmdId=22 (the status frame), NOT the 254/21 telemetry burst that
+# _decode_message_by_type consumes via _parse_fields. So they are read from the SAME raw
+# frame using the collector's proven full-path flatten (path 1.1.<field>), matched on
+# cmdFunc==254 (mirrors the mini collector, which harvests on any cmdFunc=254 frame). The
+# range guards reject field-number reuse leaking from nested submessages.
+STATUS_CMDFUNC = 254
+# key -> (field, min, max). Grid-side metering (per split-phase leg) + DC-bus voltage.
+STATUS_GUARDED_FIELDS: dict[str, tuple[int, float, float]] = {
+    # Whole-house grid exchange power (field 515), signed: + import (buying) / - export (selling).
+    # The meter-validated mini's `grid_power`. Must be read on the full path (1.1.515) like every
+    # field here — a shallow leaf match grabs a 0 from a nested submessage and freezes. It reads
+    # ~1.8x HIGH vs the CenterPoint revenue meter — a CONSISTENT multiplicative bias (1.71x total /
+    # 1.88x daytime, verified vs the 08/10-09/09 bill: 2173 kWh billed vs 3714 integrated), not an
+    # additive offset, so it still reads ~0 when self-sufficient: a directional live "is the house
+    # buying right now?" signal, not billing-grade. Signed range guard rejects field-number reuse.
+    "ocean_grid_pwr": (515, -60_000.0, 60_000.0),
+    "grid_freq": (641, 55.0, 65.0),
+    "grid_voltage_l1": (643, 100.0, 300.0),
+    "grid_voltage_l2": (644, 100.0, 300.0),
+    "grid_current_l1": (645, 0.0, 300.0),
+    "grid_current_l2": (646, 0.0, 300.0),
+    # The app proto names these dt_dab_bus_volt_ref (1502) and dt_dab_bus_volt_curr (1503):
+    # setpoint and measured bus voltage of the battery-side DC-DC (DAB) converter. Keys kept
+    # as-is so the entities' history survives; the MPPT side's own bus pair is MPPT_STATUS_FIELDS.
+    "dc_bus_voltage": (1502, 300.0, 500.0),
+    "dc_bus_voltage2": (1503, 300.0, 500.0),
+}
+# Per-string PV voltage + current — RuntimePropertyUpload (254/22), fields 691..722: a block of
+# four F32 fields per string, pv1 first: +0 voltage, +1 voltage ref, +2 current, +3 power (the
+# app's dt_pv{n}_vol_current / _vol_current_ref / _cur_current / _pwr_current). Layout from the
+# app-decompiled dev_apl_comm.proto (GnoX/ha-ef-ble, branch add-support-for-ocean-pro), whose
+# DisplayPropertyUpload declares exactly our pv power fields 1476..1483 — same schema as this
+# unit. Verified on our HR51 captures: V x A matches the frame's own W (pv1 395.27 V x 4.01 A =
+# 1585 W vs 1591.8 W). Cadence: a delta every ~60 s carrying only the voltages that changed,
+# plus a full V/A/W snapshot every ~5 min. ONLY on cmdId 22: other 254 frames reuse these leaf
+# numbers. Power is not re-read here — 254/21 already supplies pv{n}_pwr at a faster cadence.
+# Voltage is what tells a dropped-out string (low V: open circuit or bypassed panels) from a
+# shaded or soiled one (normal V, low A); the inverter's MPPT window is 60-550 V.
+PV_STATUS_CMD = (254, 22)
+PV_STATUS_FIELD_BASE = 691
+PV_STATUS_STRIDE = 4
+PV_STATUS_OFFSETS: dict[str, tuple[int, float, float]] = {
+    # suffix -> (offset in the per-string block, min, max). Current dips a few hundredths
+    # negative at night (sensor offset), so the guard admits it rather than dropping the reading.
+    "vol": (0, 0.0, 600.0),
+    "amp": (2, -1.0, 25.0),
+}
+# Per-string MPPT fault code + state machine — RuntimePropertyUpload (254/22), one varint per
+# string: fields 1512..1519 = dt_mppt_pv{n}_fault, 1520..1527 = dt_mppt_pv{n}_fsm_state (names
+# from the same app proto as PV_STATUS_*; these were once read as an 8-slot "fault register").
+# No enum ships with the proto, so codes are surfaced raw. Observed on our captures: state 8
+# with fault 0 while a string tracks; state 5 with fault 2 when it stands down — every string
+# at night, and pv6 + pv8 alone in daylight on 08-14 and 09-15 while the rest tracked. So
+# fault 2 reads as "no usable PV input" rather than a hardware trip; a NEW code is the signal.
+# Field 1531 (dt_mppt_parallel_detect_record) reads 80 = bits 4 and 6 (pv5, pv7) — plausibly
+# the inverter's record of strings it judged paralleled; unconfirmed, kept raw. ONLY on cmdId 22.
+FAULT_FIELD_BASE = 1512
+MPPT_STATE_FIELD_BASE = 1520
+MPPT_PARALLEL_DETECT_FIELD = 1531
+# MPPT-stage scalars, same 254/22 frame (app proto names in brackets). key -> (field, min, max).
+# On our captures: the bus setpoint sits at 440 V (0 when the stage is off) with the measured bus
+# ~400-420 V, and the power limit holds at 5000 W, the datasheet's per-channel rating, so a drop
+# below it is the inverter curtailing solar. ONLY on cmdId 22, like the per-string block.
+MPPT_STATUS_FIELDS: dict[str, tuple[int, float, float]] = {
+    "mppt_bus_volt_ref": (1510, 0.0, 600.0),  # dt_mppt_bus_volt_ref
+    "mppt_bus_volt": (1511, 0.0, 600.0),  # dt_mppt_bus_volt_curr
+    "mppt_power_limit": (1529, 0.0, 50_000.0),  # dt_mppt_power_limit_value
+}
+# MPPT-stage flags, raw varints like the per-string codes (no enum ships with the proto):
+# general warning reads 0 on every capture, so any non-zero is new; the insulation (Riso)
+# check flag reads 1 once the morning check has run. key -> field.
+MPPT_STATUS_RAW_FIELDS: dict[str, int] = {
+    "mppt_warning": 1528,  # dt_mppt_gen_warning
+    "mppt_iso_check_done": 1534,  # dt_mppt_iso_finish_flg
+}
+# Live grid-side metering block — HR61 fields 964..967 (254 status frame). Confirmed
+# 2026-09-16 across two off-grid/on-grid cycles: they carry real signed values while grid-tied
+# and collapse to ~0 (±5) when islanded — UNLIKE the cached 643-646 block on the inverter,
+# which is a stale quota echo (byte-identical across a whole cycle) and does NOT track grid
+# state. Unit UNCONFIRMED: signed, hundreds-range,
+# a 2x2-looking group (on-grid ~ 112 / -415 / 296 / 647; likely per-leg P/Q). They ride a
+# separate frame from 643-646 so no cross-correlation was possible — kept raw as diagnostics
+# until EcoFlow's register map or more capture pins the unit; do NOT stamp V/A/W yet.
+GRID_METER_FIELDS: tuple[int, ...] = (964, 965, 966, 967)
 
 
-def _first_num(fields: FieldMap, no: int) -> float | None:
-    """First numeric value of a field regardless of wire type (varint or float)."""
-    for wt in (WIRE_F32, WIRE_VARINT, WIRE_F64):
-        v = _first(fields, no, wt)
-        if v is not None:
-            return float(v)
-    return None
+def _flat_num(flat: dict[str, Any], field: int) -> int | float | None:
+    """Read a numeric leaf at the exact nested path 1.1.<field>, or None."""
+    v = flat.get(f"1.1.{field}")
+    return v if isinstance(v, (int, float)) else None
+
+
+def _store_raw(params: dict[str, Any], key: str, v: int | float) -> None:
+    """Store a numeric field as int when it is one, else a 2-dp float."""
+    params[key] = int(v) if isinstance(v, int) else round(float(v), 2)
+
+
+def _decode_envelopes(raw_data: bytes) -> Iterator[tuple[Any, Any, dict[str, Any]]]:
+    """Yield (cmdFunc, cmdId, flat) for each message in a raw Ocean Pro app-envelope frame.
+
+    Both device classes read their app scalars from this same envelope (see
+    ``OceanPanel._prepare_data`` for why the raw frame, not the base's decoded ``pdata``), so
+    the parse lives in one place. ``cmdFunc``/``cmdId`` are the envelope's own (paths ``1.8``/
+    ``1.9``), distinct from the DeltaPro3 header's; callers read fields at ``1.1.<field>``.
+
+    One MQTT payload can carry SEVERAL messages: the top-level field 1 repeats, e.g. a 254/22
+    status message followed by a 254/21 telemetry message (~4% of frames on live captures).
+    Each message is flattened ON ITS OWN. Flattening the whole frame as one would key every
+    message to the same ``1.x`` paths: the last message's cmdFunc/cmdId would win, and the
+    earlier messages' fields would be read under the wrong header. That silently dropped a
+    whole 254/22 delta (per-string MPPT state and fault codes, which the inverter sends only
+    on change), so those sensors stayed stale for hours. Messages are yielded as they parse,
+    so a malformed message late in a frame no longer costs the ones before it.
+    """
+    for item in _pb_parse(raw_data):
+        field, _wire, value = item
+        if field == 1 and isinstance(value, list):
+            flat = _pb_flatten([item])
+            yield flat.get(P_CMDFUNC), flat.get(P_CMDID), flat
+
+
+# A stall is surfaced only after this long with no augmented field decoded — long enough that
+# normal frame-type interleaving never trips it, short enough to notice a real outage. Every
+# MQTT message counts as a frame here (status and get/set topics too, not only telemetry), so
+# a device that goes quiet trips it as well: its offline status message is a frame.
+DECODE_STALE_AFTER_S = 900
+
+
+class _EnvelopeHealth:
+    """Surface a PERSISTENT augmented-decode stall once, instead of letting every augmented
+    Ocean Pro sensor silently freeze if the app frame format ever changes ("no silent
+    failures"). Logs only the DEGRADED and RECOVERED transitions — never a per-frame
+    heartbeat — so an outage is visible without spamming the log.
+    """
+
+    __slots__ = ("_label", "_last_ok", "_degraded")
+
+    def __init__(self, label: str) -> None:
+        self._label = label
+        self._last_ok: float | None = None
+        self._degraded = False
+
+    def ok(self) -> None:
+        """A frame yielded at least one augmented field; clear any degraded state."""
+        if self._degraded:
+            _LOGGER.warning("%s: Ocean Pro augmented decode RECOVERED", self._label)
+            self._degraded = False
+        self._last_ok = time.monotonic()
+
+    def frame(self, exc: Exception | None = None) -> None:
+        """Called once per frame (with the exception, if the decode raised). Warns once when
+        a frame arrives and no augmented field has been decoded for DECODE_STALE_AFTER_S.
+        """
+        if exc is not None:
+            _LOGGER.debug("%s: envelope decode skipped: %s", self._label, exc)
+        now = time.monotonic()
+        if self._last_ok is None:
+            self._last_ok = now
+        elif not self._degraded and now - self._last_ok > DECODE_STALE_AFTER_S:
+            self._degraded = True
+            _LOGGER.warning(
+                "%s: no augmented Ocean Pro field decoded for >%ds; augmented sensors are "
+                "stale. Either the device stopped sending telemetry (check whether its other "
+                "sensors stopped too) or the app frame format changed.",
+                self._label,
+                DECODE_STALE_AFTER_S,
+            )
 
 
 class OceanPanel(SmartHomePanel3):
@@ -97,11 +332,101 @@ class OceanPanel(SmartHomePanel3):
 
     Identical to the Smart Home Panel 3 but with 40 circuits instead of 32; the
     per-circuit array, circuit labels, grid/load flows and SoC are all inherited
-    unchanged (only the circuit geometry is overridden).
+    unchanged (only the circuit geometry is overridden), as are its Operating Mode
+    and Grid sensors.
+
+    Adds the live grid-side metering block (254 fields 964..967), confirmed
+    2026-09-16 to track two off-grid/on-grid cycles and kept raw pending unit ID;
+    see GRID_METER_FIELDS.
+
+    Grid Power is signed here (+ import / - export): unlike a Delta Pro 3 behind an SHP3,
+    an Ocean Pro exports solar. Its energy is therefore integrated as separate import and
+    export totals rather than one net total — see _decode_flows.
     """
 
     CIRCUITS = OCEAN_PANEL_CIRCUITS
     NAME_FIELDS = OCEAN_PANEL_NAME_FIELDS
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._health = _EnvelopeHealth("OceanPanel")
+
+    @override
+    def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
+        # The inherited status sensor only polls after 300 s of silence; swap it for the
+        # scheduled one (same "status" key, so the entity is unchanged) — see QUOTA_REFRESH_SEC.
+        # Grid Power is replaced by the same sensor without its energy integral: integrating the
+        # signed flow gives NET import, which falls on every export (see _decode_flows).
+        inherited = [
+            s
+            for s in super().sensors(client)
+            if not isinstance(s, QuotaStatusSensorEntity)
+            and not (isinstance(s, WattsSensorEntity) and s.mqtt_key == "shp_grid_pwr")
+        ]
+        return inherited + [
+            QuotaScheduledStatusSensorEntity(client, self, QUOTA_REFRESH_SEC, "Status", "status"),
+            InWattsSensorEntity(client, self, "shp_grid_pwr", "Grid Power"),
+            InWattsSensorEntity(client, self, "ocean_grid_import_pwr", "Grid Import Power").with_energy(),
+            OutWattsSensorEntity(client, self, "ocean_grid_export_pwr", "Grid Export Power").with_energy(),
+        ] + [
+            # Live grid-side metering (254 fields 964..967): confirmed to track grid-tied vs
+            # islanded, kept raw pending unit ID — see GRID_METER_FIELDS note. Diagnostic.
+            MiscSensorEntity(client, self, f"grid_meter_{f}", f"Grid Meter {f}", enabled=False, diagnostic=True).with_icon("mdi:transmission-tower")
+            for f in GRID_METER_FIELDS
+        ]
+
+    @override
+    def _decode_flows(self, fields: FieldMap, result: dict[str, Any]) -> None:
+        """Split the signed grid flow into import and export halves.
+
+        Each half is never negative, so its integral only ever grows — what HA's
+        Energy dashboard expects for grid consumption and return. The single net
+        integral the SHP3 keeps for Grid Power would instead dip on every export:
+        HA logs the total_increasing sensor as "not strictly increasing", and a
+        dashboard built on it counts import minus export as import.
+        """
+        super()._decode_flows(fields, result)
+        # Present only on frames that carry the flow group; otherwise both halves
+        # keep their last value, exactly like Grid Power itself.
+        grid = result.get("shp_grid_pwr")
+        if grid is not None:
+            result["ocean_grid_import_pwr"] = grid if grid > 0 else 0.0
+            result["ocean_grid_export_pwr"] = -grid if grid < 0 else 0.0
+
+    @override
+    def _prepare_data(self, raw_data: bytes) -> dict[str, Any]:
+        """Augment the base panel decode with the live grid metering (fields 964..967).
+
+        Why parse the RAW frame here instead of the base's decoded ``pdata``: the Ocean Pro
+        *app* stream wraps these scalars in its own message envelope (cmdFunc/cmdId at
+        ``1.8``/``1.9``, fields at ``1.1.<field>``), which is a DIFFERENT framing of the
+        bytes than DeltaPro3's HeaderMessage→pdata split. These fields do NOT live inside
+        the extracted ``pdata`` — verified
+        2026-09-16 by replaying live captures through both decoders (they resolve on the raw
+        envelope, return None on ``pdata``). So the generic full-path flatten is required, not
+        a shortcut. All observed frames are ``encType=0`` (no XOR), and XOR only ever scrambles
+        ``pdata`` — so it cannot affect these envelope fields even if a future frame sets it.
+        """
+        result = super()._prepare_data(raw_data)
+        extracted = False
+        exc: Exception | None = None
+        try:
+            for cmd_func, _cmd_id, flat in _decode_envelopes(raw_data):
+                # Live grid metering rides the 254 status frames (any cmdId).
+                if cmd_func == STATUS_CMDFUNC:
+                    # HA reads entity values from result["params"][mqtt_key]; materialise it.
+                    params = result.setdefault("params", {})
+                    for field in GRID_METER_FIELDS:
+                        v = _flat_num(flat, field)
+                        if v is not None:
+                            _store_raw(params, f"grid_meter_{field}", v)
+                            extracted = True
+        except Exception as e:  # reverse-engineered payload; never break the base decode
+            exc = e
+        if extracted:
+            self._health.ok()
+        self._health.frame(exc)
+        return result
 
 
 class OceanProInverter(DeltaPro3):
@@ -114,22 +439,88 @@ class OceanProInverter(DeltaPro3):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        # Last-seen battery power per pack slot, summed into total battery power.
-        self._pack_pwr: dict[int, float] = {}
+        # Per-slot latest pack readings, keyed by slot index. Each 32/177 frame carries
+        # one pack; the bank rollup reads across all slots seen so far.
+        self._bp_slots: dict[int, dict[str, float]] = {}
+        self._health = _EnvelopeHealth("OceanProInverter")
 
     @override
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         out: list[SensorEntity] = [
             # Inverter AC output; sign follows production (negative = export).
             WattsSensorEntity(client, self, "ocean_pcs_pwr", "Inverter Output Power").with_icon("mdi:sine-wave"),
-            # Pack-reported battery power (signed: + charge / - discharge).
+            # Total solar (254/21 field 517) — the inverter's own sum of the MPPT strings.
+            # No energy integration: the per-string PV sensors already feed the Energy dashboard,
+            # so integrating this too would double-count. Mirror for parity with the mini.
+            SolarPowerSensorEntity(client, self, "ocean_solar_total", "Total Solar").with_icon("mdi:solar-power"),
+            # Whole-house grid exchange (field 515, decoded in STATUS_GUARDED_FIELDS), signed:
+            # + import / - export. The meter-validated mini's `grid_power`; reads ~1.8x high vs the
+            # revenue meter (a consistent multiplicative bias — see that entry), so it is a
+            # directional live signal, not billing-grade.
+            WattsSensorEntity(client, self, "ocean_grid_pwr", "Grid Power").with_icon("mdi:transmission-tower"),
+            # Operating mode is NOT read here: the inverter stream carries no reliable copy
+            # (field 1470 is a stale default). It is the panel's Operating Mode sensor.
+            # Battery pack bank telemetry (32/177 stream). Voltage is a real measurement;
+            # pack count is a real count; current is raw (scale unsettled — see module note).
+            CentivoltSensorEntity(client, self, "bp_voltage_raw", "Battery Pack Voltage", enabled=False, diagnostic=True).with_icon("mdi:home-battery"),
+            MiscSensorEntity(client, self, "bp_packs", "Battery Packs Online", enabled=False, diagnostic=True).with_icon("mdi:battery-sync"),
+            MiscSensorEntity(client, self, "bp_current_raw", "Battery Pack Current (raw)", enabled=False, diagnostic=True).with_icon("mdi:current-dc"),
+            # Battery power, the inverter's own figure (254/21 field 518, signed:
+            # + charge / - discharge). See F_BATT_PWR.
             WattsSensorEntity(client, self, "ocean_batt_pwr", "Battery Power").with_icon("mdi:home-battery"),
-            QuotaStatusSensorEntity(client, self),
+            # Per-leg AC (PCS phase A/B): voltage, current and active power. Same 254/21
+            # stream as PV/PCS-total — the split-phase voltage HA otherwise lacks entirely.
+            VoltSensorEntity(client, self, "pcsA_voltage", "PCS Phase A Voltage").with_icon("mdi:sine-wave"),
+            AmpSensorEntity(client, self, "pcsA_current", "PCS Phase A Current"),
+            WattsSensorEntity(client, self, "pcsA_power", "PCS Phase A Power").with_icon("mdi:sine-wave"),
+            VoltSensorEntity(client, self, "pcsB_voltage", "PCS Phase B Voltage").with_icon("mdi:sine-wave"),
+            AmpSensorEntity(client, self, "pcsB_current", "PCS Phase B Current"),
+            WattsSensorEntity(client, self, "pcsB_power", "PCS Phase B Power").with_icon("mdi:sine-wave"),
+            # Scheduled, not silence-triggered — see QUOTA_REFRESH_SEC.
+            QuotaScheduledStatusSensorEntity(client, self, QUOTA_REFRESH_SEC, "Status", "status"),
+        ]
+        # Grid-side metering (254/22 status frame): frequency + per-leg voltage/current.
+        # Distinct from the PCS/inverter-output legs above — this is the grid connection.
+        out += [
+            FrequencySensorEntity(client, self, "grid_freq", "Grid Frequency"),
+            VoltSensorEntity(client, self, "grid_voltage_l1", "Grid Voltage L1").with_icon("mdi:sine-wave"),
+            VoltSensorEntity(client, self, "grid_voltage_l2", "Grid Voltage L2").with_icon("mdi:sine-wave"),
+            AmpSensorEntity(client, self, "grid_current_l1", "Grid Current L1"),
+            AmpSensorEntity(client, self, "grid_current_l2", "Grid Current L2"),
+            # DC-bus (DC-link) voltage — diagnostic; boosted ~5 V above battery terminal.
+            VoltSensorEntity(client, self, "dc_bus_voltage", "DC Bus Voltage", diagnostic=True).with_icon("mdi:current-dc"),
+            VoltSensorEntity(client, self, "dc_bus_voltage2", "DC Bus Voltage 2", diagnostic=True).with_icon("mdi:current-dc"),
+        ]
+        # Per-string MPPT fault code + state (254/22 — see FAULT_FIELD_BASE). Raw codes, no
+        # public dictionary. The fault keys keep their original fault_<field> names so the
+        # entities' history survives the re-identification from "fault register".
+        for i in range(PV_STRINGS):
+            out.append(MiscSensorEntity(client, self, f"fault_{FAULT_FIELD_BASE + i}", f"PV{i + 1} MPPT Fault Code", enabled=False, diagnostic=True).with_icon("mdi:alert-circle-outline"))
+            out.append(MiscSensorEntity(client, self, f"mppt_state_{MPPT_STATE_FIELD_BASE + i}", f"PV{i + 1} MPPT State", enabled=False, diagnostic=True).with_icon("mdi:state-machine"))
+        out.append(MiscSensorEntity(client, self, "mppt_parallel_detect", "MPPT Parallel Detect", enabled=False, diagnostic=True).with_icon("mdi:call-split"))
+        # MPPT stage (254/22 — see MPPT_STATUS_FIELDS): DC-bus setpoint vs measured, solar
+        # power limit, and the raw warning / insulation-check flags.
+        out += [
+            VoltSensorEntity(client, self, "mppt_bus_volt_ref", "MPPT Bus Voltage Setpoint", enabled=False, diagnostic=True).with_icon("mdi:current-dc"),
+            VoltSensorEntity(client, self, "mppt_bus_volt", "MPPT Bus Voltage", enabled=False, diagnostic=True).with_icon("mdi:current-dc"),
+            WattsSensorEntity(client, self, "mppt_power_limit", "MPPT Power Limit", enabled=False, diagnostic=True).with_icon("mdi:solar-power"),
+            MiscSensorEntity(client, self, "mppt_warning", "MPPT Warning", enabled=False, diagnostic=True).with_icon("mdi:alert-outline"),
+            MiscSensorEntity(client, self, "mppt_iso_check_done", "MPPT Insulation Check Done", enabled=False, diagnostic=True).with_icon("mdi:shield-check-outline"),
+        ]
+        # Device temperatures (254/21 — see DEV_TEMP_FIELD_BASE); locations unknown, so numbered.
+        out += [
+            TempSensorEntity(client, self, f"dev_temp_{n}", f"Device Temperature {n}", enabled=False, diagnostic=True)
+            for n in range(1, DEV_TEMP_COUNT + 1)
         ]
         # PV strings: per-string production power with integrated energy (kWh,
         # total_increasing) for the HA Energy dashboard.
         for i in range(1, PV_STRINGS + 1):
             out.append(SolarPowerSensorEntity(client, self, f"pv{i}_pwr", f"PV{i} Power").with_energy())
+        # PV strings: per-string voltage + current (254/22 — see PV_STATUS_OFFSETS). Secondary
+        # per-channel metrics, so disabled by default like the per-circuit volt/amp sensors.
+        for i in range(1, PV_STRINGS + 1):
+            out.append(VoltSensorEntity(client, self, f"pv{i}_vol", f"PV{i} Voltage", enabled=False, diagnostic=True).with_icon("mdi:solar-panel"))
+            out.append(AmpSensorEntity(client, self, f"pv{i}_amp", f"PV{i} Current", enabled=False, diagnostic=True))
         return out
 
     @override
@@ -145,6 +536,93 @@ class OceanProInverter(DeltaPro3):
         return []
 
     @override
+    def _prepare_data(self, raw_data: bytes) -> dict[str, Any]:
+        """Augment the base decode with battery-pack bank telemetry.
+
+        The per-pack scalars live at nested paths that a shallow top-level parse mis-reads
+        (small field numbers collide), so they are read here from the SAME raw frame the base
+        pipeline consumes, using the collector's proven full-path flatten (``1.1.<field>``).
+        Everything else — PV, PCS, total solar, battery power — is decoded in
+        ``_decode_message_by_type`` on the base's extracted pdata as before.
+        """
+        result = super()._prepare_data(raw_data)
+        extracted = False
+        exc: Exception | None = None
+        try:
+            for cmd_func, cmd_id, flat in _decode_envelopes(raw_data):
+                if (cmd_func, cmd_id) == BATTERY_PACK_CMD:
+                    # HA reads entity values from result["params"][mqtt_key]; a pack-only frame
+                    # makes the base return {}, so materialise "params" before writing into it.
+                    extracted |= self._decode_battery_pack(flat, result.setdefault("params", {}))
+                # Grid metering, DC-bus and the fault register ride the 254 status frame(s),
+                # not the 254/21 telemetry burst; read them here from the same flattened message.
+                if cmd_func == STATUS_CMDFUNC:
+                    extracted |= self._decode_status_fields(flat, result.setdefault("params", {}))
+                if (cmd_func, cmd_id) == PV_STATUS_CMD:
+                    extracted |= self._decode_pv_status(flat, result.setdefault("params", {}))
+        except Exception as e:  # reverse-engineered payload; never break the base decode
+            exc = e
+        if extracted:
+            self._health.ok()
+        self._health.frame(exc)
+        return result
+
+    def _decode_status_fields(self, flat: dict[str, Any], params: dict[str, Any]) -> bool:
+        """Grid metering + DC-bus from a 254 status frame (path 1.1.<field>).
+
+        Grid/DC-bus values are range-guarded to reject field-number reuse from nested
+        submessages.
+        Returns whether at least one field was written (for the decode-health tracker).
+        """
+        wrote = False
+        for key, (field, lo, hi) in STATUS_GUARDED_FIELDS.items():
+            v = _flat_num(flat, field)
+            if v is not None and lo <= v <= hi:
+                params[key] = round(float(v), 2)
+                wrote = True
+        return wrote
+
+    def _decode_pv_status(self, flat: dict[str, Any], params: dict[str, Any]) -> bool:
+        """Per-string PV voltage, current and MPPT fault/state from the 254/22 frame.
+
+        Delta frames carry only the strings whose values changed, so an absent field leaves
+        that sensor at its last value (the HA sensors persist between frames). The MPPT codes
+        are varints surfaced as-is (no guard) so any change shows. Returns whether at least one
+        field was written (for the decode-health tracker).
+        """
+        wrote = False
+        for i in range(PV_STRINGS):
+            base = PV_STATUS_FIELD_BASE + PV_STATUS_STRIDE * i
+            for suffix, (offset, lo, hi) in PV_STATUS_OFFSETS.items():
+                v = _flat_num(flat, base + offset)
+                if v is not None and lo <= v <= hi:
+                    params[f"pv{i + 1}_{suffix}"] = round(float(v), 2)
+                    wrote = True
+            for key, field in (
+                (f"fault_{FAULT_FIELD_BASE + i}", FAULT_FIELD_BASE + i),
+                (f"mppt_state_{MPPT_STATE_FIELD_BASE + i}", MPPT_STATE_FIELD_BASE + i),
+            ):
+                v = _flat_num(flat, field)
+                if v is not None:
+                    params[key] = int(v)
+                    wrote = True
+        v = _flat_num(flat, MPPT_PARALLEL_DETECT_FIELD)
+        if v is not None:
+            params["mppt_parallel_detect"] = int(v)
+            wrote = True
+        for key, (field, lo, hi) in MPPT_STATUS_FIELDS.items():
+            v = _flat_num(flat, field)
+            if v is not None and lo <= v <= hi:
+                params[key] = round(float(v), 2)
+                wrote = True
+        for key, field in MPPT_STATUS_RAW_FIELDS.items():
+            v = _flat_num(flat, field)
+            if v is not None:
+                params[key] = int(v)
+                wrote = True
+        return wrote
+
+    @override
     def _decode_message_by_type(self, pdata: bytes, header_info: dict[str, Any]) -> dict[str, Any]:
         result = super()._decode_message_by_type(pdata, header_info)
         cmd = (header_info.get("cmdFunc"), header_info.get("cmdId"))
@@ -153,8 +631,10 @@ class OceanProInverter(DeltaPro3):
                 fields = _parse_fields(pdata)
                 self._decode_pv(fields, result)
                 self._decode_pcs(fields, result)
-            elif cmd == BATTERY_PACK_CMD:
-                self._decode_battery(_parse_fields(pdata), result)
+                self._decode_solar_total(fields, result)
+                self._decode_pcs_legs(fields, result)
+                self._decode_dev_temps(fields, result)
+                self._decode_battery_power(fields, result)
         except Exception as e:  # reverse-engineered payload; never break the base decode
             _LOGGER.debug("Ocean Pro inverter field parse skipped: %s", e)
         return result
@@ -173,13 +653,162 @@ class OceanProInverter(DeltaPro3):
         if v is not None:
             result["ocean_pcs_pwr"] = round(v, 2)
 
-    def _decode_battery(self, fields: FieldMap, result: dict[str, Any]) -> None:
-        """Pack-reported battery power, summed across slots (cmdFunc 32 / cmdId 177)."""
-        pwr = _first_num(fields, F_BATT_PWR)
-        # Missing, or an implausible spike (field-44 decode noise) — keep the
-        # last good per-slot values rather than poisoning the sum.
-        if pwr is None or abs(pwr) > BATT_PACK_MAX_W:
-            return
-        slot = _first_num(fields, F_BATT_SLOT)
-        self._pack_pwr[int(slot) if slot is not None else 0] = round(pwr, 2)
-        result["ocean_batt_pwr"] = round(sum(self._pack_pwr.values()), 2)
+    def _decode_solar_total(self, fields: FieldMap, result: dict[str, Any]) -> None:
+        """Total solar power (field 517) — the inverter's own sum of the MPPT strings.
+
+        Range-guarded like PV to reject field-number reuse from nested submessages.
+        """
+        v = _first(fields, F_SOLAR_TOTAL, WIRE_F32)
+        if v is not None and 0 <= v <= SOLAR_TOTAL_MAX:
+            result["ocean_solar_total"] = round(v, 2)
+
+    def _decode_pcs_legs(self, fields: FieldMap, result: dict[str, Any]) -> None:
+        """Per-leg PCS AC voltage/current/power (fields 1463..1468).
+
+        Same 254/21 stream and F32 wire type as PV/PCS-total. Voltage and current are
+        positive; per-leg power is signed (negative = production/export). Range guards
+        reject the same field-number reuse from nested submessages that PV guards against.
+        """
+        for key, fnum in PCS_LEG_FIELDS.items():
+            v = _first(fields, fnum, WIRE_F32)
+            if v is None:
+                continue
+            if key.endswith("_voltage") and not (0 <= v <= PCS_V_MAX):
+                continue
+            if key.endswith("_current") and not (0 <= v <= PCS_A_MAX):
+                continue
+            if key.endswith("_power") and abs(v) > PCS_P_MAX:
+                continue
+            result[key] = round(v, 2)
+
+    def _decode_dev_temps(self, fields: FieldMap, result: dict[str, Any]) -> None:
+        """Device temperatures 1..5 (fields 1553..1557), degrees C, range-guarded."""
+        for n in range(DEV_TEMP_COUNT):
+            v = _first(fields, DEV_TEMP_FIELD_BASE + n, WIRE_F32)
+            if v is not None and DEV_TEMP_MIN <= v <= DEV_TEMP_MAX:
+                result[f"dev_temp_{n + 1}"] = round(v, 1)
+
+    def _decode_battery_power(self, fields: FieldMap, result: dict[str, Any]) -> None:
+        """Battery power (field 518), + = charging — see F_BATT_PWR for why this field."""
+        v = _first(fields, F_BATT_PWR, WIRE_F32)
+        if v is not None and abs(v) <= BATT_P_MAX:
+            result["ocean_batt_pwr"] = round(v, 2)
+
+    def _decode_battery_pack(self, flat: dict[str, Any], params: dict[str, Any]) -> bool:
+        """Bank rollup from the per-pack 32/177 stream (one pack per message).
+
+        Voltage averages across paralleled packs; current sums; pack count = distinct
+        slots seen. Each message carries a single pack (path 1.1.5 = slot), so the running
+        per-slot state (self._bp_slots) is what the bank figures read across. Returns True —
+        a pack frame always materialises at least the pack count (for the health tracker).
+        """
+        slot = flat.get(P_BP_SLOT)
+        slot = int(slot) if isinstance(slot, (int, float)) else 0
+        pack = self._bp_slots.setdefault(slot, {})
+
+        volt = flat.get(P_BP_VOLTAGE)
+        if isinstance(volt, (int, float)) and BP_V_RAW_MIN <= volt <= BP_V_RAW_MAX:
+            pack["v"] = float(volt)  # raw counts; CentivoltSensor renders /100 = V
+        amp = flat.get(P_BP_CURRENT)
+        if isinstance(amp, (int, float)):
+            pack["a"] = float(amp)  # raw; scale unsettled
+
+        # Recompute the whole bank from scratch each frame rather than
+        # incrementally: N is tiny (a handful of packs) and this is not a hot
+        # loop, so a full re-walk is simpler and can never drift from _bp_slots.
+        volts = [p["v"] for p in self._bp_slots.values() if "v" in p]
+        if volts:
+            params["bp_voltage_raw"] = round(sum(volts) / len(volts), 1)
+        amps = [p["a"] for p in self._bp_slots.values() if "a" in p]
+        if amps:
+            params["bp_current_raw"] = round(sum(amps), 1)
+        params["bp_packs"] = len(self._bp_slots)
+        return True
+
+
+# --- Protobuf full-path decoder, copied verbatim from the collector's protodump ---------
+# Kept byte-for-byte identical to the utility-meter-validated mini collector so work mode
+# and the pack scalars decode to the same values the collector records. Reads a frame into
+# field-path -> value, recursing into submessages; F32/F64 surface as their float.
+def _pb_read_varint(buf: bytes, pos: int) -> tuple[int, int]:
+    result = shift = 0
+    while pos < len(buf):
+        byte = buf[pos]
+        result |= (byte & 0x7F) << shift
+        pos += 1
+        if not byte & 0x80:
+            return result, pos
+        shift += 7
+        if shift > 63:
+            break
+    raise ValueError("varint overrun")
+
+
+def _pb_parse(buf: bytes, depth: int = 0):
+    """Yield (field, wire, value); recurse into submessages (mirrors protodump.parse).
+
+    A length-delimited (wire 2) field is decoded by attempting to parse its bytes as a
+    submessage ONCE and keeping the result: a non-empty parse is treated as a nested message,
+    a parse that fails or yields nothing falls back to ascii/hex. The try/except is per level,
+    so a malformed grandchild is localised to its own field (becomes a scalar) exactly as a
+    two-pass probe-then-reparse would — but without paying to walk each submessage twice
+    (~39% faster per frame on live captures, byte-identical flattened output, n=678).
+    """
+    pos = 0
+    while pos < len(buf):
+        key, pos = _pb_read_varint(buf, pos)
+        field, wire = key >> 3, key & 0x07
+        if field == 0:
+            raise ValueError("field 0")
+        value: Any  # varint int | wire-1/5 dict | submessage list | bytes | str
+        if wire == 0:
+            value, pos = _pb_read_varint(buf, pos)
+        elif wire == 1:
+            if pos + 8 > len(buf):
+                raise ValueError("truncated 64-bit")
+            raw = buf[pos : pos + 8]
+            value = {"u64": struct.unpack("<Q", raw)[0], "f64": struct.unpack("<d", raw)[0]}
+            pos += 8
+        elif wire == 2:
+            length, pos = _pb_read_varint(buf, pos)
+            if pos + length > len(buf):
+                raise ValueError("truncated bytes")
+            raw = buf[pos : pos + length]
+            pos += length
+            submessage: list[Any] | None = None
+            if depth < 6 and length:
+                try:
+                    submessage = list(_pb_parse(raw, depth + 1))
+                except (ValueError, IndexError, struct.error):
+                    submessage = None
+            if submessage:
+                value = submessage
+            else:
+                try:
+                    text = raw.decode("ascii")
+                    value = text if text.isprintable() else raw.hex()
+                except UnicodeDecodeError:
+                    value = raw.hex()
+        elif wire == 5:
+            if pos + 4 > len(buf):
+                raise ValueError("truncated 32-bit")
+            raw = buf[pos : pos + 4]
+            value = {"u32": struct.unpack("<I", raw)[0], "f32": round(struct.unpack("<f", raw)[0], 4)}
+            pos += 4
+        else:
+            raise ValueError(f"bad wire type {wire}")
+        yield field, wire, value
+
+
+def _pb_flatten(items, prefix: str = "") -> dict[str, Any]:
+    """field-path -> value (F32/F64 as their float). Mirrors protodump.flatten_paths."""
+    out: dict[str, Any] = {}
+    for field, _wire, value in items:
+        path = f"{prefix}.{field}" if prefix else str(field)
+        if isinstance(value, list):
+            out.update(_pb_flatten(value, path))
+        elif isinstance(value, dict):
+            out[path] = value.get("f32", value.get("f64"))
+        else:
+            out[path] = value
+    return out

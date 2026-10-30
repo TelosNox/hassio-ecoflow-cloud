@@ -1,4 +1,5 @@
 import enum
+import json
 import logging
 from typing import Any, NamedTuple, cast, override
 
@@ -17,7 +18,9 @@ from homeassistant.util import dt
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.api.message import JSONDict, Message, PrivateAPIMessageProtocol
-from custom_components.ecoflow_cloud.devices import BaseInternalDevice, const
+from custom_components.ecoflow_cloud.device_data import DeviceData
+from custom_components.ecoflow_cloud.devices import BaseInternalDevice, EcoflowDeviceInfo, const
+from custom_components.ecoflow_cloud.devices.data_holder import PreparedData
 from custom_components.ecoflow_cloud.devices.internal import flatten_dict
 from custom_components.ecoflow_cloud.devices.internal.proto import AddressId, ef_smartmeter_pb2
 from custom_components.ecoflow_cloud.sensor import (
@@ -113,6 +116,11 @@ class SmartMeterCommandMessage(PrivateAPIMessageProtocol):
 
 
 class SmartMeter(BaseInternalDevice):
+    def __init__(self, device_info: EcoflowDeviceInfo, device_data: DeviceData) -> None:
+        super().__init__(device_info, device_data)
+        # Only PowerStream and Smart Meter are tested on the app status topic (#946).
+        device_info.status_topic = f"/app/device/status/{device_info.sn}"
+
     @override
     def sensors(self, client: EcoflowApiClient) -> list[SensorEntity]:
         timezoneEntity = MiscSensorEntity(client, self, "254_21.utcTimezone", const.UTC_TIMEZONE, False)
@@ -336,6 +344,10 @@ class SmartMeter(BaseInternalDevice):
                     continue
 
                 params = cast(JSONDict, res.setdefault("params", {}))
+                if not message.cmd_func and not message.cmd_id and message.code == "-2":
+                    params.update({"online": 0})
+                    continue
+
                 if command in {Command.DISPLAY_PROPERTY_UPLOAD}:
                     payload = get_expected_payload_type(command)()
                     try:
@@ -361,6 +373,17 @@ class SmartMeter(BaseInternalDevice):
             _LOGGER.error(error)
             _LOGGER.info(raw_data.hex())
         return res
+    
+    @override
+    def _prepare_data_status_topic(self, raw_data: bytes) -> PreparedData:
+        try:
+            data = json.loads(raw_data.decode("utf-8"))
+            if "params" in data and "status" in data["params"]:
+                return PreparedData(int(data["params"]["status"]) == 1, None, data)
+            return PreparedData(None, None, data)
+        except Exception as e:
+            _LOGGER.debug(f"Failed to prepare status topic for {self.device_info.sn}: ", e)
+        return PreparedData(None, None, None)
 
     # @override
     # def _prepare_data_get_reply_topic(self, raw_data: bytes) -> PreparedData:

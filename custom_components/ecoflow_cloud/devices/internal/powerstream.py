@@ -1,4 +1,5 @@
 import enum
+import json
 import logging
 from collections.abc import Sequence
 from typing import Any, NamedTuple, cast, override
@@ -13,7 +14,8 @@ from homeassistant.util import dt
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.api.message import JSONDict, Message, PrivateAPIMessageProtocol
-from custom_components.ecoflow_cloud.devices import BaseInternalDevice, const
+from custom_components.ecoflow_cloud.device_data import DeviceData
+from custom_components.ecoflow_cloud.devices import BaseInternalDevice, EcoflowDeviceInfo, const
 from custom_components.ecoflow_cloud.devices.data_holder import PreparedData
 from custom_components.ecoflow_cloud.devices.internal import to_lower_camel_case
 from custom_components.ecoflow_cloud.devices.internal.proto import AddressId
@@ -157,6 +159,10 @@ class PowerStream(BaseInternalDevice):
         # permanentWatts is set in 0.1 W (doc example: 213 = 21.3 W), so the
         # generic 100 W step is an integration limit, not a device one.
         return 1
+    def __init__(self, device_info: EcoflowDeviceInfo, device_data: DeviceData) -> None:
+        super().__init__(device_info, device_data)
+        # Only PowerStream and Smart Meter are tested on the app status topic (#946).
+        device_info.status_topic = f"/app/device/status/{device_info.sn}"
 
     @override
     def sensors(self, client: EcoflowApiClient) -> Sequence[SensorEntity]:
@@ -360,6 +366,11 @@ class PowerStream(BaseInternalDevice):
                         self.device_data.sn,
                     )
 
+                params = cast(JSONDict, res.setdefault("params", {}))
+                if not message.cmd_func and not message.cmd_id and message.code == "-2":
+                    params.update({"online": 0})
+                    continue
+
                 command_desc = CommandFuncAndId(func=message.cmd_func, id=message.cmd_id)
 
                 try:
@@ -372,7 +383,6 @@ class PowerStream(BaseInternalDevice):
                     )
                     continue
 
-                params = cast(JSONDict, res.setdefault("params", {}))
                 if command in {Command.INVERTER_HEARTBEAT}:
                     payload_inverter_heartbeat = powerstream.PowerStreamInverterHeartbeat()
                     _ = payload_inverter_heartbeat.ParseFromString(message.pdata)
@@ -393,12 +403,22 @@ class PowerStream(BaseInternalDevice):
                             continue
 
                         field_name = f"watth{watth_type_name[0].upper()}{watth_type_name[1:]}"
-                        params.update(
-                            {
-                                f"{command.func}_{command.id}.{field_name}": sum(watth_item.watth),
-                                f"{command.func}_{command.id}.{field_name}Timestamp": watth_item.timestamp,
-                            }
-                        )
+                        dt_now = dt.utcnow()
+                        dt_today = dt_now.replace(hour=0, minute=0, second=0, microsecond=0)
+                        dt_days = dict([
+                            [str(int(dt_today.timestamp())), ""],
+                            [str(int(dt_today.timestamp()) - 24*60*60), "Yesterday"]
+                        ])
+                        # We have to check exact dates because somtimes it sends the whole week
+                        if str(watth_item.timestamp) in dt_days:
+                            params.update(
+                                {
+                                    f"{command.func}_{command.id}.{field_name}{dt_days[str(watth_item.timestamp)]}": sum(
+                                        watth_item.watth
+                                    ),
+                                    f"{command.func}_{command.id}.{field_name}{dt_days[str(watth_item.timestamp)]}Timestamp": watth_item.timestamp,
+                                }
+                            )
 
                 # Add cmd information to allow extraction in extract_quota_data
                 res["cmdFunc"] = command_desc.func
@@ -409,6 +429,16 @@ class PowerStream(BaseInternalDevice):
             _LOGGER.error(error)
             _LOGGER.info(raw_data.hex())
         return res
+
+    def _prepare_data_status_topic(self, raw_data: bytes) -> PreparedData:
+        try:
+            data = json.loads(raw_data.decode("utf-8"))
+            if "params" in data and "status" in data["params"]:
+                return PreparedData(int(data["params"]["status"]) == 1, None, data)
+            return PreparedData(None, None, data)
+        except Exception as e:
+            _LOGGER.debug(f"Failed to prepare status topic for {self.device_info.sn}: ", e)
+        return PreparedData(None, None, None)
 
     def _status_sensor(self, client: EcoflowApiClient) -> StatusSensorEntity:
         return QuotaStatusSensorEntity(client, self)

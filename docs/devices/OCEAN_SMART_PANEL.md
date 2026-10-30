@@ -3,15 +3,19 @@
 *Sensors*
 - Battery Level (`cms_batt_soc`)
 - Home Load Power (`shp_load_pwr`) (energy:  _[Device Name]_ Home Load  Energy)
-- Grid Power (`shp_grid_pwr`) (energy:  _[Device Name]_ Grid  Energy)
 - Storage Output Power (`shp_batt_pwr`)
-- Status
 - Grid L1 Power (`shp_grid_l1_pwr`)   _(disabled)_
 - Grid L2 Power (`shp_grid_l2_pwr`)   _(disabled)_
 - Grid L1 Voltage (`shp_l1_vol`)   _(disabled)_
 - Grid L2 Voltage (`shp_l2_vol`)   _(disabled)_
 - Grid L1 Current (`shp_grid_l1_amp`)   _(disabled)_
 - Grid L2 Current (`shp_grid_l2_amp`)   _(disabled)_
+- Backup Reserve (`shp_backup_reserve`)
+- Charge Limit (`shp_max_chg_soc`)
+- Nice to Have Threshold (`shp_nice_to_have_soc`)   _(disabled)_
+- Battery Charging State (`shp_chg_dsg_state`)
+- Operating Mode (`shp_panel_mode`)
+- Charge Power Limit (`shp_charge_limit`)   _(disabled)_
 - Circuit 1 Power (`ch_1_pwr`) (energy:  _[Device Name]_ Circuit 1  Energy)
 - Circuit 1 Voltage (`ch_1_vol`)   _(disabled)_
 - Circuit 1 Current (`ch_1_amp`)   _(disabled)_
@@ -132,5 +136,19 @@
 - Circuit 40 Power (`ch_40_pwr`) (energy:  _[Device Name]_ Circuit 40  Energy)
 - Circuit 40 Voltage (`ch_40_vol`)   _(disabled)_
 - Circuit 40 Current (`ch_40_amp`)   _(disabled)_
+- Status
+- Grid Power (`shp_grid_pwr`)
+- Grid Import Power (`ocean_grid_import_pwr`) (energy:  _[Device Name]_ Grid Import  Energy)
+- Grid Export Power (`ocean_grid_export_pwr`) (energy:  _[Device Name]_ Grid Export  Energy)
+- Grid Meter 964 (`grid_meter_964`)   _(disabled)_
+- Grid Meter 965 (`grid_meter_965`)   _(disabled)_
+- Grid Meter 966 (`grid_meter_966`)   _(disabled)_
+- Grid Meter 967 (`grid_meter_967`)   _(disabled)_
+
+*Binary sensors*
+- Grid (`shp_grid_sta`)
+- Grid Energized (`shp_grid_energized`)
+- EPS Mode (`shp_eps_mode`)   _(disabled)_
+- Storm Guard (`shp_storm_guard`)   _(disabled)_
 
 

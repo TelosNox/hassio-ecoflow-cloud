@@ -71,12 +71,14 @@ OPTS_VERBOSE_STATUS_MODE: Final = "verbose_status_mode"
 OPTS_RESET_SENSORS_ON_OFFLINE: Final = "reset_sensors_on_offline"
 # optional, absent from entries saved before it existed: read with a default
 OPTS_HISTORY_BACKFILL_DAYS: Final = "history_backfill_days"
+OPTS_ENERGY_UPDATE_INTERVAL_SEC: Final = "energy_update_interval_sec"
 
 DEFAULT_REFRESH_PERIOD_SEC: Final = 5
 DEFAULT_ASSUME_OFFLINE_SEC: Final = 300  # 5 minutes
 DEFAULT_RESET_SENSORS_ON_OFFLINE: Final = True
 DEFAULT_HISTORY_BACKFILL_DAYS: Final = 90
 MAX_HISTORY_BACKFILL_DAYS: Final = 1095
+DEFAULT_ENERGY_UPDATE_INTERVAL_SEC: Final = 0  # 0 = write on every source update
 
 _STATUS_COORDINATOR_KEY = "__status_coordinator"
 
@@ -233,6 +235,12 @@ def extract_devices(entry: ConfigEntry) -> dict[str, DeviceData]:
                 entry.options[CONF_DEVICE_LIST][sn][OPTS_VERBOSE_STATUS_MODE],
                 entry.options[CONF_DEVICE_LIST][sn][OPTS_ASSUME_OFFLINE_SEC],
                 entry.options[CONF_DEVICE_LIST][sn][OPTS_RESET_SENSORS_ON_OFFLINE],
+                # Read with a default instead of a VERSION bump + migration: an absent key simply means
+                # "off", and keeping the entry version unchanged lets a user roll back to an older
+                # release without "migration failed".
+                entry.options[CONF_DEVICE_LIST][sn].get(
+                    OPTS_ENERGY_UPDATE_INTERVAL_SEC, DEFAULT_ENERGY_UPDATE_INTERVAL_SEC
+                ),
                 entry.options[CONF_DEVICE_LIST][sn].get(OPTS_HISTORY_BACKFILL_DAYS, DEFAULT_HISTORY_BACKFILL_DAYS),
             ),
             None,
