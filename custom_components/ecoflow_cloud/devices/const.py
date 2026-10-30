@@ -479,6 +479,22 @@ STREAM_AC5000_UPS = "UPS Mode"
 STREAM_AC5000_WORK_MODE = "Work Mode"
 STREAM_AC5000_WORK_MODE_OPTIONS = {"Self-powered": 0, "Intelligent": 1, "Scheduled": 2}
 
+# STREAM 5000 (SN prefix "ES21"), public API. sysEnergyStreamReport describes the system.
+STREAM_5000_SYSTEM_PV_POWER = "System PV Power"
+STREAM_5000_SYSTEM_LOAD_POWER = "System Load Power"
+STREAM_5000_SYSTEM_GRID_POWER = "System Grid Power"  # >0 import / <0 export
+STREAM_5000_ON_GRID_POWER = "On-Grid Power"
+STREAM_5000_FEED_IN_LIMIT = "Feed-in Limit"
+STREAM_5000_AC_SOCKET = "AC Socket"
+STREAM_5000_WORK_MODE = "Operating Mode"
+STREAM_5000_WORK_MODE_OPTIONS = {
+    "Self-consumption": "SELF_CONSUMPTION",
+    "AI mode": "AI_MODE",
+    "Timer tasks": "TIMER_TASK",
+    "POU mode": "POU_MODE",
+    "Emergency stop": "EMERGENCY_STOP",
+}
+
 ACCU_CHARGE_CAP = "Cumulative Capacity Charge (mAh)"
 ACCU_CHARGE_ENERGY = "Cumulative Energy Charge (Wh)"
 ACCU_DISCHARGE_CAP = "Cumulative Capacity Discharge (mAh)"

@@ -53,6 +53,7 @@ from custom_components.ecoflow_cloud.devices.public import (
     smart_home_panel_2 as public_smart_home_panel_2,
     smart_meter as public_smart_meter,
     smart_plug as public_smart_plug,
+    stream_5000 as public_stream_5000,
     stream_ac as public_stream_ac,
     stream_microinverter as public_stream_microinverter,
     wave2 as public_wave2,
@@ -128,6 +129,7 @@ device_by_product: OrderedDict[str, Type[BaseDevice]] = OrderedDict[str, Type[Ba
         "Stream PRO": public_stream_ac.StreamAC,
         "Stream Ultra": public_stream_ac.StreamAC,
         "Stream Ultra X": public_stream_ac.StreamAC,
+        "STREAM 5000": public_stream_5000.Stream5000,
         "Stream Microinverter": public_stream_microinverter.StreamMicroinveter,
         "Smart Home Panel": public_smart_home_panel.SmartHomePanel,
         "Smart Home Panel 2": public_smart_home_panel_2.SmartHomePanel2,
@@ -135,5 +137,10 @@ device_by_product: OrderedDict[str, Type[BaseDevice]] = OrderedDict[str, Type[Ba
         "Diagnostic": DiagnosticDevice,
     }
 )
+
+# For a device list entry whose productName is not a key above. What EcoFlow returns
+# as productName for this model has not been seen yet. ES22 is left out: the open API
+# was still reported to refuse it (error 1006), see tests/test_stream_5000_public.py.
+device_by_sn_prefix: dict[str, str] = {"ES21": "STREAM 5000"}
 
 device_support_sub_devices = ["Power Kits"]
