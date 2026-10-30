@@ -40,6 +40,7 @@ from custom_components.ecoflow_cloud.devices.public.stream_history import (
     REFRESH_COMPLETED_DAY_SEC,
     LastStatistic,
     StreamHistory,
+    StreamSystems,
     is_history_owner,
     last_completed_utc_day,
     statistic_id,
@@ -47,7 +48,7 @@ from custom_components.ecoflow_cloud.devices.public.stream_history import (
 )
 from tests.stream_fakes import MASTER, SLAVE
 
-EXAMPLES = json.loads((Path(__file__).parent / "fixtures" / "stream_history" / "stream_md_examples.json").read_text())
+EXAMPLES = json.loads((Path(__file__).parent / "fixtures" / "stream_history" / "stream_md_examples.json").read_text(encoding="utf-8"))
 EXAMPLE_BY_CODE = {
     CODE_SOLAR: EXAMPLES["solar"],
     CODE_LOAD: EXAMPLES["load"],
@@ -318,24 +319,134 @@ def test_configured_sns_come_from_enabled_public_entries():
     assert sh._configured_public_sns(hass) == {MASTER, SLAVE}  # type: ignore[arg-type]
 
 
-def test_entity_unique_ids_follow_the_main_sn():
+class FakeSystemsStore:
+    def __init__(self, data: dict[str, str] | None = None) -> None:
+        self.data = data
+        self.saves = 0
+
+    async def async_load(self) -> dict[str, str] | None:
+        return self.data
+
+    async def async_save(self, data: dict[str, str]) -> None:
+        self.data = data
+        self.saves += 1
+
+
+def test_system_id_stays_when_the_main_role_moves_and_across_restarts():
+    store = FakeSystemsStore()
+
+    async def run() -> None:
+        systems = StreamSystems(store)
+        assert await systems.async_system_id(MASTER, MASTER) == MASTER
+        assert await systems.async_system_id(SLAVE, MASTER) == MASTER
+        # the role moves to the other unit
+        assert await systems.async_system_id(SLAVE, SLAVE) == MASTER
+        assert await systems.async_system_id(MASTER, SLAVE) == MASTER
+        assert store.saves == 2  # only when something new was learned
+        # restart while the other unit has the role
+        restarted = StreamSystems(store)
+        assert await restarted.async_system_id(SLAVE, SLAVE) == MASTER
+
+    asyncio.run(run())
+
+
+def test_carrier_follows_the_main_unit():
+    systems = StreamSystems(FakeSystemsStore())
+    configured = {MASTER, SLAVE}
+    assert systems.carries(MASTER, MASTER, MASTER, configured)
+    assert not systems.carries(MASTER, SLAVE, MASTER, configured)
+    assert systems.carries(MASTER, SLAVE, SLAVE, configured)
+    assert not systems.carries(MASTER, MASTER, SLAVE, configured)
+
+
+def test_first_unit_without_configured_main_carries_until_released():
+    systems = StreamSystems(FakeSystemsStore())
+    assert systems.carries("SYS", "UNIT1", "MAIN", {"UNIT1", "UNIT2"})
+    assert not systems.carries("SYS", "UNIT2", "MAIN", {"UNIT1", "UNIT2"})
+    systems.release("UNIT1")
+    assert systems.carries("SYS", "UNIT2", "MAIN", {"UNIT1", "UNIT2"})
+
+
+def test_statistic_continues_when_the_main_role_moves():
+    api, store = FakeApi(), FakeStore()
+    clock = Clock(datetime(2026, 10, 25, 12, tzinfo=UTC))
+    old_main = make_history(api, store, clock)
+    new_main = make_history(api, store, clock)
+
+    async def run() -> None:
+        old_main.assign(MASTER, MASTER)
+        await old_main.async_update()
+        clock.advance(timedelta(days=1))
+        # the next update of each unit: the role moved, the system id did not
+        old_main.deactivate()
+        new_main.assign(SLAVE, MASTER)
+        await new_main.async_update()
+
+    asyncio.run(run())
+    assert api.calls[-1][0] == SLAVE
+    assert old_main.values == {} and old_main.independence is None and not old_main.backlog
+    assert new_main.values["solar_energy"].day == date(2026, 10, 25)
+    assert set(store.rows) == {statistic_id(MASTER, s.key) for m in sh.DAILY_METRICS for s in m.series}
+    rows = store.series("solar_energy")
+    assert [row[0] for row in rows] == [date(2026, 10, day) for day in range(22, 26)]
+    total = 0.0
+    for _, state, row_sum in rows:
+        total += state
+        assert row_sum == pytest.approx(total)
+
+
+def test_unit_taking_the_role_back_reads_its_day_again():
+    api, store = FakeApi(), FakeStore()
+    history = make_history(api, store, Clock(datetime(2026, 10, 25, 12, tzinfo=UTC)))
+
+    async def run() -> None:
+        history.assign(MASTER, MASTER)
+        await history.async_update()
+        history.deactivate()
+        history.assign(MASTER, MASTER)
+        await history.async_update()
+
+    asyncio.run(run())
+    assert history.values["solar_energy"].day == date(2026, 10, 24)
+    assert history.independence is not None
+
+
+def test_coordinator_shows_nothing_on_a_unit_without_the_role():
+    api, store = FakeApi(), FakeStore()
+    history = make_history(api, store, Clock(datetime(2026, 10, 25, 12, tzinfo=UTC)))
+    roles: list[tuple[str, str] | None] = [(MASTER, MASTER), None]
+
+    async def role() -> tuple[str, str] | None:
+        return roles.pop(0)
+
+    coordinator = SimpleNamespace(history=history, update_interval=None, _role=role)
+    asyncio.run(sh.StreamHistoryCoordinator._async_update_data(coordinator))  # type: ignore[arg-type]
+    assert history.values and history.active
+    requests = len(api.calls)
+    asyncio.run(sh.StreamHistoryCoordinator._async_update_data(coordinator))  # type: ignore[arg-type]
+    assert not history.values and not history.active and len(api.calls) == requests
+    assert coordinator.update_interval == sh.UPDATE_INTERVAL
+
+
+def test_entities_belong_to_their_unit_and_statistics_to_the_system():
     from tests.stream_fakes import FakeClient, make_stream
 
     client = FakeClient(MASTER)
     slave = make_stream(client, SLAVE)
     history = make_history(FakeApi(), FakeStore(), Clock(datetime(2026, 10, 25, tzinfo=UTC)))
+    history.assign(SLAVE, MASTER)
     coordinator = SimpleNamespace(history=history)
     entity = sh.StreamHistorySensorEntity(client, slave, coordinator, sh.DAILY_METRICS[0].series[0])  # type: ignore[arg-type]
-    assert entity.unique_id == f"ecoflow-api-{MASTER}-history-solar-energy"
+    assert entity.unique_id == f"ecoflow-api-{SLAVE}-history-solar-energy"
     independence = sh.StreamIndependenceSensorEntity(client, slave, coordinator)  # type: ignore[arg-type]
-    assert independence.unique_id == f"ecoflow-api-{MASTER}-history-energy-independence"
+    assert independence.unique_id == f"ecoflow-api-{SLAVE}-history-energy-independence"
     assert entity.state_class is None and entity.native_value is None and not entity.available
     assert entity.device_info is not None and entity.device_info["serial_number"] == SLAVE
 
     history.values["solar_energy"] = sh.DayValue(date(2026, 10, 24), 9945.0, "Wh")
     assert entity.available and entity.native_value == 9945.0
     assert entity.extra_state_attributes == {
-        "system_main_sn": MASTER,
+        "system_main_sn": SLAVE,
         "statistic_id": "ecoflow_cloud:bk31masterunit01_solar_energy",
         "date": "2026-10-24",
         "period_start": "2026-10-24T00:00:00+00:00",
@@ -522,13 +633,17 @@ def test_unusable_response_is_logged_once(caplog):
 
 
 def test_coordinator_turns_api_errors_into_update_failed():
-    history = SimpleNamespace(main_sn=MASTER, backlog=True)
+    history = SimpleNamespace(system_id=MASTER, backlog=True, assign=lambda *_: None)
 
     async def failing_update() -> None:
         raise EcoflowException("Request too frequent", code="8521")
 
     history.async_update = failing_update
-    coordinator = SimpleNamespace(history=history, update_interval=None)
+
+    async def role() -> tuple[str, str]:
+        return MASTER, MASTER
+
+    coordinator = SimpleNamespace(history=history, update_interval=None, _role=role)
     with pytest.raises(UpdateFailed):
         asyncio.run(sh.StreamHistoryCoordinator._async_update_data(coordinator))  # type: ignore[arg-type]
     assert coordinator.update_interval == sh.BACKLOG_UPDATE_INTERVAL
