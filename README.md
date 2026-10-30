@@ -15,7 +15,8 @@ This is a maintained fork of [tolwi/hassio-ecoflow-cloud](https://github.com/tol
 
 - **Drop-in replacement:** the domain stays `ecoflow_cloud` and every entity keeps its unique_id, so switching from upstream keeps your entities, automations and history. Remove the upstream repository from HACS, add this one, install and restart. Your config entries stay as they are.
 - **Requires Home Assistant 2025.11 or newer.**
-- **Experimental:** STREAM 5000 / STREAM AC 5000 (only with `private_api`). Known issue: [#6](https://github.com/TelosNox/hassio-ecoflow-cloud/issues/6).
+- **Experimental:** STREAM 5000 / STREAM AC 5000 with `private_api`. Known issue: [#6](https://github.com/TelosNox/hassio-ecoflow-cloud/issues/6).
+- **Experimental:** STREAM 5000 (`ES21`) and STREAM 5000 AC (`ES22`) with `public_api`, from EcoFlow's published spec and not yet tested on hardware with this integration. It needs no account password, but EcoFlow exposes only 11 system-level fields there, so `private_api` has far more data. EcoFlow's open API was recently reported to refuse `ES22` (error 1006); if yours does, the log shows it. Emergency stop is shown when active but cannot be selected.
 - Please report problems with this version [here](https://github.com/TelosNox/hassio-ecoflow-cloud/issues), not upstream. Include the API mode, device model and a diagnostic download.
 
 ## Installation
@@ -3740,6 +3741,56 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 *Sliders (numbers)*
 - Backup Reserve Level
+
+</p></details>
+
+<details><summary> STREAM 5000 (API) <i>(sensors: 7, switches: 3, sliders: 1, selects: 1)</i> </summary>
+<p>
+
+*Sensors*
+- System Battery Level
+- System PV Power
+- System Battery Power
+- System Load Power
+- System Grid Power
+- On-Grid Power
+- Status
+
+*Switches*
+- Backup Reserve Enabled
+- Feed-in Limit
+- AC Socket
+
+*Sliders (numbers)*
+- Backup Reserve Level
+
+*Selects*
+- Operating Mode
+
+</p></details>
+
+<details><summary> STREAM 5000 AC (API) <i>(sensors: 7, switches: 3, sliders: 1, selects: 1)</i> </summary>
+<p>
+
+*Sensors*
+- System Battery Level
+- System PV Power
+- System Battery Power
+- System Load Power
+- System Grid Power
+- On-Grid Power
+- Status
+
+*Switches*
+- Backup Reserve Enabled
+- Feed-in Limit
+- AC Socket
+
+*Sliders (numbers)*
+- Backup Reserve Level
+
+*Selects*
+- Operating Mode
 
 </p></details>
 

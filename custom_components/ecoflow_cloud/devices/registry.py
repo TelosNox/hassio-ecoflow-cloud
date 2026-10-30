@@ -53,6 +53,7 @@ from custom_components.ecoflow_cloud.devices.public import (
     smart_home_panel_2 as public_smart_home_panel_2,
     smart_meter as public_smart_meter,
     smart_plug as public_smart_plug,
+    stream_5000 as public_stream_5000,
     stream_ac as public_stream_ac,
     stream_microinverter as public_stream_microinverter,
     wave2 as public_wave2,
@@ -128,6 +129,8 @@ device_by_product: OrderedDict[str, Type[BaseDevice]] = OrderedDict[str, Type[Ba
         "Stream PRO": public_stream_ac.StreamAC,
         "Stream Ultra": public_stream_ac.StreamAC,
         "Stream Ultra X": public_stream_ac.StreamAC,
+        "STREAM 5000": public_stream_5000.Stream5000,
+        "STREAM 5000 AC": public_stream_5000.Stream5000,
         "Stream Microinverter": public_stream_microinverter.StreamMicroinveter,
         "Smart Home Panel": public_smart_home_panel.SmartHomePanel,
         "Smart Home Panel 2": public_smart_home_panel_2.SmartHomePanel2,
@@ -135,5 +138,9 @@ device_by_product: OrderedDict[str, Type[BaseDevice]] = OrderedDict[str, Type[Ba
         "Diagnostic": DiagnosticDevice,
     }
 )
+
+# Wins over the device list's names: what EcoFlow returns as productName for these has
+# not been seen yet, and a deviceName "Stream AC 5000" would match the key "Stream AC".
+device_by_sn_prefix: dict[str, str] = {"ES21": "STREAM 5000", "ES22": "STREAM 5000 AC"}
 
 device_support_sub_devices = ["Power Kits"]

@@ -27,6 +27,11 @@ STREAM_SYSTEM_COMMAND_PARAMS = frozenset(
         "cfgBackupReverseSoc",  # Backup reserve level
         "cfgEnergyStrategyOperateMode",  # Operating mode - Self-powered / AI Mode
         "cfgFeedGridMode",  # Feed-in control
+        # STREAM 5000 Series: "obtain the main device SN before querying or setting
+        # system-level values". devSwitch (AC socket) stays on the unit that owns it.
+        "bpBackupConfig",  # Backup reserve switch and level
+        "workMode",  # Operating mode
+        "powerParameterConfig",  # Feed-to-grid limit switch
     }
 )
 
@@ -109,17 +114,19 @@ def evaluate_set_reply(reply: Mapping[str, Any]) -> str | None:
     """Why the device rejected a command, or None if it did not.
 
     Only documented fields are judged: the common reply ``code`` and
-    ``data.configOk`` (STREAM and DELTA Pro 3 "Set & Set Reply" examples).
-    ``data.ack`` is left alone: the docs show both 0 and 1 in replies that
-    carry code "0".
+    ``data.configOk`` (STREAM and DELTA Pro 3 "Set & Set Reply" examples) or
+    ``data.cmdOk`` (STREAM 5000 Series). ``data.ack`` is left alone: the docs
+    show both 0 and 1 in replies that carry code "0".
     """
     code = reply.get("code")
     if code is not None and str(code) != "0":
         reason = SET_REPLY_CODES.get(str(code)) or reply.get("message") or "unknown error"
         return f"code {code}: {reason}"
     data = reply.get("data")
-    if isinstance(data, Mapping) and data.get("configOk") is False:
-        return "configOk is false"
+    if isinstance(data, Mapping):
+        for field in ("configOk", "cmdOk"):
+            if data.get(field) is False:
+                return f"{field} is false"
     return None
 
 
