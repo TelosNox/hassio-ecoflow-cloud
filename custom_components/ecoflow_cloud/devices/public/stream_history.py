@@ -5,12 +5,18 @@ with ``beginTime``/``endTime`` ("in UTC timezone") and a metric ``code``.
 "If there are multiple devices, use the API to obtain the serial number of
 the main device", so every query uses the system main SN (MainSnCache).
 
+The main role can move to another unit at any time, while a long-term record
+has to stay in one place. The statistics therefore belong to a system id that
+never changes (StreamSystems: the main SN seen first, stored across restarts).
+Every unit has its own history sensors; only the current main unit fills them
+and imports, the others are unavailable. Each update looks the main SN up again.
+
 Time model: the API aggregates over UTC days. A "today" value would restart
 at UTC midnight, which is 01:00 or 02:00 local time in Central Europe. The
 sensors therefore show the last *completed* UTC day, with that date as an
 attribute, and have no state_class: they never reset during a local day and
 the recorder compiles no statistics of its own from them. The long-term
-record is the external statistic ``ecoflow_cloud:<main_sn>_<series>``: one
+record is the external statistic ``ecoflow_cloud:<system_id>_<series>``: one
 row per UTC day, starting at 00:00 UTC, with ``state`` = that day's value
 and a continuous ``sum``. Imports overwrite rows with the same start, so a
 re-import never duplicates, and every update continues from the last row.
@@ -37,6 +43,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfMass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt
 from homeassistant.util.unit_conversion import EnergyConverter, MassConverter
@@ -55,6 +62,8 @@ _LOGGER = logging.getLogger(__name__)
 
 STATISTIC_SOURCE = "ecoflow_cloud"
 HISTORY_DATA_KEY = "__stream_history"
+SYSTEMS_STORAGE_KEY = "ecoflow_cloud.stream_history"
+SYSTEMS_STORAGE_VERSION = 1
 
 
 # A completed day only changes when EcoFlow revises it; it is read again
@@ -126,8 +135,8 @@ class HistoryDataError(Exception):
     """A response the history cannot use; retrying the same query will not help."""
 
 
-def statistic_id(main_sn: str, key: str) -> str:
-    object_id = re.sub(r"[^a-z0-9]+", "_", f"{main_sn}_{key}".lower()).strip("_")
+def statistic_id(system_id: str, key: str) -> str:
+    object_id = re.sub(r"[^a-z0-9]+", "_", f"{system_id}_{key}".lower()).strip("_")
     return f"{STATISTIC_SOURCE}:{object_id}"
 
 
@@ -200,7 +209,7 @@ def _normalize(series: HistorySeries, value: float, unit: str | None) -> tuple[f
     return value, unit.strip() if unit and unit.strip() else None
 
 
-def statistic_metadata(main_sn: str, series: HistorySeries, unit: str | None) -> StatisticMetaData:
+def statistic_metadata(system_id: str, series: HistorySeries, unit: str | None) -> StatisticMetaData:
     unit_class = None
     if series.kind == KIND_ENERGY:
         unit_class = EnergyConverter.UNIT_CLASS
@@ -208,8 +217,8 @@ def statistic_metadata(main_sn: str, series: HistorySeries, unit: str | None) ->
         unit_class = MassConverter.UNIT_CLASS
     return StatisticMetaData(
         source=STATISTIC_SOURCE,
-        statistic_id=statistic_id(main_sn, series.key),
-        name=f"STREAM {main_sn} {series.title.removesuffix(' (last UTC day)')}",
+        statistic_id=statistic_id(system_id, series.key),
+        name=f"STREAM {system_id} {series.title.removesuffix(' (last UTC day)')}",
         unit_of_measurement=unit,
         unit_class=unit_class,
         has_sum=True,
@@ -266,6 +275,8 @@ class StreamHistory:
         request_interval: float = REQUEST_INTERVAL_SEC,
     ):
         self.main_sn = main_sn
+        self.system_id = main_sn
+        self.active = False
         self._fetch = fetch
         self._store = store
         self.backfill_days = min(max(backfill_days, 1), MAX_HISTORY_BACKFILL_DAYS)
@@ -284,6 +295,36 @@ class StreamHistory:
         self._refreshed: dict[str, tuple[date, float]] = {}
         # codes whose last data error was logged, so a persisting one is logged once
         self._data_errors: set[str] = set()
+
+    def assign(self, main_sn: str, system_id: str) -> None:
+        """This unit carries the history of the system, reading it from main_sn."""
+        if self.active and (main_sn, system_id) == (self.main_sn, self.system_id):
+            return
+        if system_id != self.system_id:
+            self._forget()
+        self.main_sn = main_sn
+        self.system_id = system_id
+        self.active = True
+        _LOGGER.info(
+            "STREAM history of system %s from main unit %s, statistics %s",
+            system_id,
+            main_sn,
+            ", ".join(statistic_id(system_id, s.key) for m in DAILY_METRICS for s in m.series),
+        )
+
+    def deactivate(self) -> None:
+        """Another unit carries the history: this one shows nothing instead of a stale day."""
+        if self.active:
+            _LOGGER.info("STREAM history of system %s moved to another unit", self.system_id)
+        self.active = False
+        self._forget()
+
+    def _forget(self) -> None:
+        self.values = {}
+        self.independence = None
+        self.backlog = False
+        self._refreshed = {}
+        self._data_errors = set()
 
     async def async_update(self) -> None:
         now = self._clock()
@@ -312,12 +353,12 @@ class StreamHistory:
 
     def _data_error(self, code: str, day: date | int, error: HistoryDataError) -> None:
         log = _LOGGER.debug if code in self._data_errors else _LOGGER.warning
-        log("Unusable STREAM history of %s for %s (%s): %s", self.main_sn, day, code, error)
+        log("Unusable STREAM history of %s for %s (%s): %s", self.system_id, day, code, error)
         self._data_errors.add(code)
 
     async def _update_metric(self, metric: HistoryMetric, newest_day: date) -> None:
         last = {
-            series.key: await self._store.async_last(statistic_id(self.main_sn, series.key))
+            series.key: await self._store.async_last(statistic_id(self.system_id, series.key))
             for series in metric.series
         }
         first_day = newest_day - timedelta(days=self.backfill_days - 1)
@@ -373,7 +414,7 @@ class StreamHistory:
                 rows.append(StatisticData(start=utc_day_start(day), state=value, sum=total))
                 self.values[series.key] = DayValue(day, value, day_unit or self._unit(series.key))
             if rows:
-                self._store.add(statistic_metadata(self.main_sn, series, unit or self._unit(series.key)), rows)
+                self._store.add(statistic_metadata(self.system_id, series, unit or self._unit(series.key)), rows)
 
     def _unit(self, key: str) -> str | None:
         known = self.values.get(key)
@@ -429,35 +470,90 @@ class RecorderStatisticsStore:
         async_add_external_statistics(self._hass, metadata, rows)
 
 
+# (main SN, system id) if this unit carries the history now, else None
+type HistoryRole = Callable[[], Awaitable[tuple[str, str] | None]]
+
+
 class StreamHistoryCoordinator(DataUpdateCoordinator[None]):
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, history: StreamHistory):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, history: StreamHistory, role: HistoryRole):
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
-            name=f"EcoFlow STREAM history {history.main_sn}",
+            name=f"EcoFlow STREAM history {entry.title}",
             update_interval=UPDATE_INTERVAL,
             always_update=True,
         )
         self.history = history
+        self._role = role
 
     async def _async_update_data(self) -> None:
         # DataUpdateCoordinator logs the first failure and the recovery, not every retry
         try:
+            role = await self._role()
+            if role is None:
+                self.history.deactivate()
+                return
+            self.history.assign(*role)
             await self.history.async_update()
         except (EcoflowException, TimeoutError, OSError) as error:
-            raise UpdateFailed(f"STREAM history of {self.history.main_sn}: {error}") from error
+            raise UpdateFailed(f"STREAM history of {self.history.system_id}: {error}") from error
         finally:
             self.update_interval = BACKLOG_UPDATE_INTERVAL if self.history.backlog else UPDATE_INTERVAL
 
 
 def is_history_owner(device_sn: str, main_sn: str, configured_sns: set[str]) -> bool:
-    """Whether this unit creates the history of its system.
+    """Whether this unit may carry the history of its system right now.
 
     The main unit does. A unit whose main unit is configured in no entry
-    does too; when several are, the first one to claim the main SN wins.
+    does too; when several are, the first one to claim the system wins.
     """
     return device_sn == main_sn or main_sn not in configured_sns
+
+
+class SystemsStore(Protocol):
+    async def async_load(self) -> dict[str, str] | None: ...
+
+    async def async_save(self, data: dict[str, str]) -> None: ...
+
+
+class StreamSystems:
+    """Which STREAM system each unit belongs to, kept across restarts.
+
+    A system is named after the main SN seen first and keeps that id when the
+    main role moves. Unit to system is all there is to store: every lookup says
+    that a unit and its main unit belong together.
+    """
+
+    def __init__(self, store: SystemsStore):
+        self._store = store
+        self._lock = asyncio.Lock()
+        self._units: dict[str, str] | None = None
+        # system id -> the unit that carries it
+        self._carriers: dict[str, str] = {}
+
+    async def async_system_id(self, unit_sn: str, main_sn: str) -> str:
+        async with self._lock:
+            if self._units is None:
+                self._units = dict(await self._store.async_load() or {})
+            units = self._units
+            system_id = units.get(main_sn) or units.get(unit_sn) or main_sn
+            if units.get(main_sn) != system_id or units.get(unit_sn) != system_id:
+                units[main_sn] = units[unit_sn] = system_id
+                await self._store.async_save(dict(units))
+            return system_id
+
+    def carries(self, system_id: str, unit_sn: str, main_sn: str, configured_sns: set[str]) -> bool:
+        if not is_history_owner(unit_sn, main_sn, configured_sns):
+            self.release(unit_sn)
+            return False
+        if unit_sn == main_sn:
+            self._carriers[system_id] = unit_sn
+            return True
+        return self._carriers.setdefault(system_id, unit_sn) == unit_sn
+
+    def release(self, unit_sn: str) -> None:
+        self._carriers = {system: unit for system, unit in self._carriers.items() if unit != unit_sn}
 
 
 def _configured_public_sns(hass: HomeAssistant) -> set[str]:
@@ -498,42 +594,34 @@ async def _async_setup_device_history(
 
     cache = device.main_sn_cache
     assert cache is not None
-    # the history belongs to the main SN; never guess it from the unit's own SN
+    # the history is read from the main SN; never guess it from the unit's own SN
     while not cache.resolved:
         await client.async_refresh_main_sn(device)
         if not cache.resolved:
             await asyncio.sleep(MAIN_SN_RETRY_SEC)
 
-    main_sn = cache.sn
     sn = device.device_info.sn
-    if not is_history_owner(sn, main_sn, _configured_public_sns(hass)):
-        _LOGGER.debug("STREAM history of %s is created by its main unit, not by %s", main_sn, sn)
-        return
-    claims: dict[str, str] = hass.data[ECOFLOW_DOMAIN].setdefault(HISTORY_DATA_KEY, {})
-    if main_sn in claims:
-        _LOGGER.debug("STREAM history of %s already set up, not again for %s", main_sn, sn)
-        return
-    claims[main_sn] = entry.entry_id
+    domain_data = hass.data[ECOFLOW_DOMAIN]
+    if HISTORY_DATA_KEY not in domain_data:
+        domain_data[HISTORY_DATA_KEY] = StreamSystems(Store(hass, SYSTEMS_STORAGE_VERSION, SYSTEMS_STORAGE_KEY))
+    systems: StreamSystems = domain_data[HISTORY_DATA_KEY]
+    entry.async_on_unload(lambda: systems.release(sn))
 
-    def release() -> None:
-        if claims.get(main_sn) == entry.entry_id:
-            claims.pop(main_sn)
-
-    entry.async_on_unload(release)
+    async def role() -> tuple[str, str] | None:
+        # a failed lookup keeps the last known main SN
+        cache.invalidate()
+        await client.async_refresh_main_sn(device)
+        main_sn = cache.sn
+        system_id = await systems.async_system_id(sn, main_sn)
+        return (main_sn, system_id) if systems.carries(system_id, sn, main_sn, _configured_public_sns(hass)) else None
 
     history = StreamHistory(
-        main_sn,
+        cache.sn,
         client.quota_data,
         RecorderStatisticsStore(hass),
         device.device_data.options.history_backfill_days,
     )
-    coordinator = StreamHistoryCoordinator(hass, entry, history)
-    _LOGGER.info(
-        "STREAM history of system %s on %s, statistics %s",
-        main_sn,
-        sn,
-        ", ".join(statistic_id(main_sn, s.key) for m in DAILY_METRICS for s in m.series),
-    )
+    coordinator = StreamHistoryCoordinator(hass, entry, history, role)
     entities: list[SensorEntity] = [
         StreamHistorySensorEntity(client, device, coordinator, series) for m in DAILY_METRICS for series in m.series
     ]
@@ -558,8 +646,6 @@ class _StreamHistoryEntity(SensorEntity, EcoFlowAbstractEntity, CoordinatorEntit
     def __init__(self, client: EcoflowApiClient, device: StreamAC, coordinator: StreamHistoryCoordinator, title: str, key: str):
         CoordinatorEntity.__init__(self, coordinator)
         EcoFlowAbstractEntity.__init__(self, client, device, title, f"history.{key}")
-        # the system's history, so the main SN, whichever unit carries it
-        self._attr_unique_id = self._gen_unique_id(coordinator.history.main_sn, f"history.{key}")
         self._history = coordinator.history
 
 
@@ -598,7 +684,7 @@ class StreamHistorySensorEntity(_StreamHistoryEntity):
         value = self._history.values.get(self._series.key)
         attributes: dict[str, Any] = {
             "system_main_sn": self._history.main_sn,
-            "statistic_id": statistic_id(self._history.main_sn, self._series.key),
+            "statistic_id": statistic_id(self._history.system_id, self._series.key),
         }
         if value is not None:
             attributes["date"] = value.day.isoformat()

@@ -11,13 +11,19 @@ main device". Every query uses the system main SN from `MainSnCache`
 (`GET /device/system/main/sn`, the lookup the system commands already use). The history is
 set up once the main SN is resolved; it is never guessed from a unit's own SN.
 
-One set of entities and statistics per system, never one per unit:
+The main role can move to another unit at any time. One statistic per system stays in
+place when it does:
 
-- the main unit carries them (STREAM Pro master in a Pro + Ultra X system);
-- a unit whose main unit is configured in no enabled public-API entry carries them instead;
-- if several such units exist, the first to claim the main SN wins.
-
-Entity unique_ids are built from the main SN: `ecoflow-api-<main_sn>-history-<series>`.
+- **System id:** the main SN seen first, stored in `.storage/ecoflow_cloud.stream_history`.
+  It does not change when the main role moves, and the statistics are named after it.
+- **Entities:** every STREAM unit has its own history sensors,
+  `ecoflow-api-<unit_sn>-history-<series>`. The current main unit fills them; on the other
+  units they are unavailable, because 0 would read as a real daily value.
+- **Move:** every update looks the main SN up again, so after an hour at the latest the new
+  main unit takes over and continues the same statistic. If both units briefly claim the
+  role, they write the same rows.
+- A unit whose main unit is configured in no enabled public-API entry carries the history
+  instead. If there are several, the first one wins.
 
 ## Time model
 
@@ -28,7 +34,7 @@ would restart at 00:00 UTC, which is 01:00 (CET) or 02:00 (CEST) local time.
   (the UTC day), `period_start`, `period_end`, `system_main_sn`, `statistic_id`. The value
   changes once per day, shortly after 00:00 UTC, and never resets within a local day.
   No `state_class`: the recorder compiles no statistics of its own from these sensors.
-- **Statistics** (`ecoflow_cloud:<main_sn>_<series>`, lowercase): one row per UTC day,
+- **Statistics** (`ecoflow_cloud:<system_id>_<series>`, lowercase): one row per UTC day,
   `start` = 00:00 UTC of that day, `state` = the day's value, `sum` = running total.
   In the energy dashboard the whole UTC day shows up in the hour starting 00:00 UTC; a day
   view in a UTC+x time zone shows it on the same date.
@@ -56,7 +62,7 @@ Check it against the app (see the PR's live test plan) before relying on grid/ba
   most every 6 hours (catches late corrections), the year value likewise.
 - The newest day is not written while the API returns no data for it yet; it is asked
   again at the next update. An older day without data (before the system existed) is 0.
-- Backfill: option *History backfill (days)* of the carrying unit, default 90, 1-1095.
+- Backfill: option *History backfill (days)* of the unit carrying it at the first import, default 90, 1-1095.
   Only the first import goes back that far; later ones continue from the last row.
   At most 120 requests per update, one per second; while a backfill remains, the next
   update follows after 5 minutes.
@@ -67,4 +73,3 @@ Check it against the app (see the PR's live test plan) before relying on grid/ba
 - An API error stops the update after importing what was read; the coordinator logs the
   first failure and the recovery, not every retry. An unusable response (unknown unit,
   inner error code) is logged once per metric as a warning, then at debug level.
-- A change of the main unit takes effect after a reload of the entry.
