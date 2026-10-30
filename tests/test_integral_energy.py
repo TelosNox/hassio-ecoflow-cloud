@@ -11,7 +11,10 @@ from custom_components.ecoflow_cloud import sensor
 def _base() -> SimpleNamespace:
     return SimpleNamespace(
         coordinator=SimpleNamespace(hass=MagicMock()),
-        _device=SimpleNamespace(device_info=SimpleNamespace(name="STREAM")),
+        _device=SimpleNamespace(
+            device_info=SimpleNamespace(name="STREAM"),
+            device_data=SimpleNamespace(options=SimpleNamespace(energy_update_interval=0)),
+        ),
         title=lambda: "Power PV Energy",
         entity_id="sensor.stream_power_pv",
         _attr_unique_id="ecoflow-api-SN-powGetPv",

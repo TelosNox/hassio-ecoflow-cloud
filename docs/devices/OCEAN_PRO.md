@@ -2,8 +2,53 @@
 
 *Sensors*
 - Inverter Output Power (`ocean_pcs_pwr`)
+- Total Solar (`ocean_solar_total`)
+- Grid Power (`ocean_grid_pwr`)
+- Battery Pack Voltage (`bp_voltage_raw`)   _(disabled)_
+- Battery Packs Online (`bp_packs`)   _(disabled)_
+- Battery Pack Current (raw) (`bp_current_raw`)   _(disabled)_
 - Battery Power (`ocean_batt_pwr`)
+- PCS Phase A Voltage (`pcsA_voltage`)
+- PCS Phase A Current (`pcsA_current`)
+- PCS Phase A Power (`pcsA_power`)
+- PCS Phase B Voltage (`pcsB_voltage`)
+- PCS Phase B Current (`pcsB_current`)
+- PCS Phase B Power (`pcsB_power`)
 - Status
+- Grid Frequency (`grid_freq`)
+- Grid Voltage L1 (`grid_voltage_l1`)
+- Grid Voltage L2 (`grid_voltage_l2`)
+- Grid Current L1 (`grid_current_l1`)
+- Grid Current L2 (`grid_current_l2`)
+- DC Bus Voltage (`dc_bus_voltage`)
+- DC Bus Voltage 2 (`dc_bus_voltage2`)
+- PV1 MPPT Fault Code (`fault_1512`)   _(disabled)_
+- PV1 MPPT State (`mppt_state_1520`)   _(disabled)_
+- PV2 MPPT Fault Code (`fault_1513`)   _(disabled)_
+- PV2 MPPT State (`mppt_state_1521`)   _(disabled)_
+- PV3 MPPT Fault Code (`fault_1514`)   _(disabled)_
+- PV3 MPPT State (`mppt_state_1522`)   _(disabled)_
+- PV4 MPPT Fault Code (`fault_1515`)   _(disabled)_
+- PV4 MPPT State (`mppt_state_1523`)   _(disabled)_
+- PV5 MPPT Fault Code (`fault_1516`)   _(disabled)_
+- PV5 MPPT State (`mppt_state_1524`)   _(disabled)_
+- PV6 MPPT Fault Code (`fault_1517`)   _(disabled)_
+- PV6 MPPT State (`mppt_state_1525`)   _(disabled)_
+- PV7 MPPT Fault Code (`fault_1518`)   _(disabled)_
+- PV7 MPPT State (`mppt_state_1526`)   _(disabled)_
+- PV8 MPPT Fault Code (`fault_1519`)   _(disabled)_
+- PV8 MPPT State (`mppt_state_1527`)   _(disabled)_
+- MPPT Parallel Detect (`mppt_parallel_detect`)   _(disabled)_
+- MPPT Bus Voltage Setpoint (`mppt_bus_volt_ref`)   _(disabled)_
+- MPPT Bus Voltage (`mppt_bus_volt`)   _(disabled)_
+- MPPT Power Limit (`mppt_power_limit`)   _(disabled)_
+- MPPT Warning (`mppt_warning`)   _(disabled)_
+- MPPT Insulation Check Done (`mppt_iso_check_done`)   _(disabled)_
+- Device Temperature 1 (`dev_temp_1`)   _(disabled)_
+- Device Temperature 2 (`dev_temp_2`)   _(disabled)_
+- Device Temperature 3 (`dev_temp_3`)   _(disabled)_
+- Device Temperature 4 (`dev_temp_4`)   _(disabled)_
+- Device Temperature 5 (`dev_temp_5`)   _(disabled)_
 - PV1 Power (`pv1_pwr`) (energy:  _[Device Name]_ PV1  Energy)
 - PV2 Power (`pv2_pwr`) (energy:  _[Device Name]_ PV2  Energy)
 - PV3 Power (`pv3_pwr`) (energy:  _[Device Name]_ PV3  Energy)
@@ -12,5 +57,21 @@
 - PV6 Power (`pv6_pwr`) (energy:  _[Device Name]_ PV6  Energy)
 - PV7 Power (`pv7_pwr`) (energy:  _[Device Name]_ PV7  Energy)
 - PV8 Power (`pv8_pwr`) (energy:  _[Device Name]_ PV8  Energy)
+- PV1 Voltage (`pv1_vol`)   _(disabled)_
+- PV1 Current (`pv1_amp`)   _(disabled)_
+- PV2 Voltage (`pv2_vol`)   _(disabled)_
+- PV2 Current (`pv2_amp`)   _(disabled)_
+- PV3 Voltage (`pv3_vol`)   _(disabled)_
+- PV3 Current (`pv3_amp`)   _(disabled)_
+- PV4 Voltage (`pv4_vol`)   _(disabled)_
+- PV4 Current (`pv4_amp`)   _(disabled)_
+- PV5 Voltage (`pv5_vol`)   _(disabled)_
+- PV5 Current (`pv5_amp`)   _(disabled)_
+- PV6 Voltage (`pv6_vol`)   _(disabled)_
+- PV6 Current (`pv6_amp`)   _(disabled)_
+- PV7 Voltage (`pv7_vol`)   _(disabled)_
+- PV7 Current (`pv7_amp`)   _(disabled)_
+- PV8 Voltage (`pv8_vol`)   _(disabled)_
+- PV8 Current (`pv8_amp`)   _(disabled)_
 
 

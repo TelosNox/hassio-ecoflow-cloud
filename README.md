@@ -43,6 +43,10 @@ Restart Home Assistant. Once restart is done, use `Add Integration` → `Ecoflow
 ## Device Management
 For information on how to add, remove, and configure devices, please refer to the [Device Management Documentation](docs/device_management.md).
 
+## Example dashboards
+Ready-to-paste Lovelace examples live in [docs/dashboards](docs/dashboards/README.md).
+Currently: PowerOcean Pro (US) with its Smart Panel.
+
 ## EcoFlow API modes
 
 The integration supports two EcoFlow cloud API modes. They expose different data,
@@ -393,16 +397,20 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> RIVER_2 <i>(sensors: 34, switches: 5, sliders: 4, selects: 5)</i> </summary>
+<details><summary> RIVER_2 <i>(sensors: 43, binary_sensors: 1, switches: 9, sliders: 5, selects: 5)</i> </summary>
 <p>
 
 *Sensors*
 - Main Battery Level
+- Main Battery Level  _(disabled)_
 - Main Design Capacity  _(disabled)_
 - Main Full Capacity  _(disabled)_
+- Main Full Capacity  _(disabled)_
+- Main Remain Capacity  _(disabled)_
 - Main Remain Capacity  _(disabled)_
 - State of Health
 - Battery Level
+- Battery Level  _(disabled)_
 - Battery Charging State
 - Total In Power (energy:  _[Device Name]_ Total In  Energy)
 - Total Out Power (energy:  _[Device Name]_ Total Out  Energy)
@@ -424,22 +432,35 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Remaining Time
 - Inv Out Temperature
 - Cycles
+- Cycles  _(disabled)_
 - Battery Temperature
+- Battery Temperature  _(disabled)_
 - Min Cell Temperature  _(disabled)_
 - Max Cell Temperature  _(disabled)_
 - Battery Volts  _(disabled)_
+- Battery Volts  _(disabled)_
 - Min Cell Volts  _(disabled)_
+- Min Cell Volts  _(disabled)_
+- Max Cell Volts  _(disabled)_
 - Max Cell Volts  _(disabled)_
 - Status
 
+*Binary sensors*
+- AC Slow Charging  _(disabled)_
+
 *Switches*
 - AC Enabled
+- AC Enabled
+- AC Always On
 - AC Always On
 - X-Boost Enabled
+- X-Boost Enabled
+- DC (12V) Enabled
 - DC (12V) Enabled
 - Backup Reserve Enabled
 
 *Sliders (numbers)*
+- Max Charge Level
 - Max Charge Level
 - Min Discharge Level
 - AC Charging Power
@@ -739,7 +760,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> DELTA_PRO_3 <i>(sensors: 47, switches: 8, sliders: 3, selects: 4)</i> </summary>
+<details><summary> DELTA_PRO_3 <i>(sensors: 47, switches: 8, sliders: 4, selects: 4)</i> </summary>
 <p>
 
 *Sensors*
@@ -805,6 +826,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Max Charge Level
 - Min Discharge Level
 - AC Charging Power
+- Backup Reserve Level
 
 *Selects*
 - Screen Timeout
@@ -889,7 +911,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> SMART_HOME_PANEL_3 <i>(sensors: 107)</i> </summary>
+<details><summary> SMART_HOME_PANEL_3 <i>(sensors: 113, binary_sensors: 4)</i> </summary>
 <p>
 
 *Sensors*
@@ -904,6 +926,12 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Grid L2 Voltage  _(disabled)_
 - Grid L1 Current  _(disabled)_
 - Grid L2 Current  _(disabled)_
+- Backup Reserve
+- Charge Limit
+- Nice to Have Threshold  _(disabled)_
+- Battery Charging State
+- Operating Mode
+- Charge Power Limit  _(disabled)_
 - Circuit 1 Power (energy:  _[Device Name]_ Circuit 1  Energy)
 - Circuit 1 Voltage  _(disabled)_
 - Circuit 1 Current  _(disabled)_
@@ -1001,23 +1029,33 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Circuit 32 Voltage  _(disabled)_
 - Circuit 32 Current  _(disabled)_
 
+*Binary sensors*
+- Grid
+- Grid Energized
+- EPS Mode  _(disabled)_
+- Storm Guard  _(disabled)_
+
 </p></details>
 
-<details><summary> OCEAN_SMART_PANEL <i>(sensors: 131)</i> </summary>
+<details><summary> OCEAN_SMART_PANEL <i>(sensors: 143, binary_sensors: 4)</i> </summary>
 <p>
 
 *Sensors*
 - Battery Level
 - Home Load Power (energy:  _[Device Name]_ Home Load  Energy)
-- Grid Power (energy:  _[Device Name]_ Grid  Energy)
 - Storage Output Power
-- Status
 - Grid L1 Power  _(disabled)_
 - Grid L2 Power  _(disabled)_
 - Grid L1 Voltage  _(disabled)_
 - Grid L2 Voltage  _(disabled)_
 - Grid L1 Current  _(disabled)_
 - Grid L2 Current  _(disabled)_
+- Backup Reserve
+- Charge Limit
+- Nice to Have Threshold  _(disabled)_
+- Battery Charging State
+- Operating Mode
+- Charge Power Limit  _(disabled)_
 - Circuit 1 Power (energy:  _[Device Name]_ Circuit 1  Energy)
 - Circuit 1 Voltage  _(disabled)_
 - Circuit 1 Current  _(disabled)_
@@ -1138,16 +1176,75 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Circuit 40 Power (energy:  _[Device Name]_ Circuit 40  Energy)
 - Circuit 40 Voltage  _(disabled)_
 - Circuit 40 Current  _(disabled)_
+- Status
+- Grid Power
+- Grid Import Power (energy:  _[Device Name]_ Grid Import  Energy)
+- Grid Export Power (energy:  _[Device Name]_ Grid Export  Energy)
+- Grid Meter 964  _(disabled)_
+- Grid Meter 965  _(disabled)_
+- Grid Meter 966  _(disabled)_
+- Grid Meter 967  _(disabled)_
+
+*Binary sensors*
+- Grid
+- Grid Energized
+- EPS Mode  _(disabled)_
+- Storm Guard  _(disabled)_
 
 </p></details>
 
-<details><summary> OCEAN_PRO <i>(sensors: 11)</i> </summary>
+<details><summary> OCEAN_PRO <i>(sensors: 72)</i> </summary>
 <p>
 
 *Sensors*
 - Inverter Output Power
+- Total Solar
+- Grid Power
+- Battery Pack Voltage  _(disabled)_
+- Battery Packs Online  _(disabled)_
+- Battery Pack Current (raw)  _(disabled)_
 - Battery Power
+- PCS Phase A Voltage
+- PCS Phase A Current
+- PCS Phase A Power
+- PCS Phase B Voltage
+- PCS Phase B Current
+- PCS Phase B Power
 - Status
+- Grid Frequency
+- Grid Voltage L1
+- Grid Voltage L2
+- Grid Current L1
+- Grid Current L2
+- DC Bus Voltage
+- DC Bus Voltage 2
+- PV1 MPPT Fault Code  _(disabled)_
+- PV1 MPPT State  _(disabled)_
+- PV2 MPPT Fault Code  _(disabled)_
+- PV2 MPPT State  _(disabled)_
+- PV3 MPPT Fault Code  _(disabled)_
+- PV3 MPPT State  _(disabled)_
+- PV4 MPPT Fault Code  _(disabled)_
+- PV4 MPPT State  _(disabled)_
+- PV5 MPPT Fault Code  _(disabled)_
+- PV5 MPPT State  _(disabled)_
+- PV6 MPPT Fault Code  _(disabled)_
+- PV6 MPPT State  _(disabled)_
+- PV7 MPPT Fault Code  _(disabled)_
+- PV7 MPPT State  _(disabled)_
+- PV8 MPPT Fault Code  _(disabled)_
+- PV8 MPPT State  _(disabled)_
+- MPPT Parallel Detect  _(disabled)_
+- MPPT Bus Voltage Setpoint  _(disabled)_
+- MPPT Bus Voltage  _(disabled)_
+- MPPT Power Limit  _(disabled)_
+- MPPT Warning  _(disabled)_
+- MPPT Insulation Check Done  _(disabled)_
+- Device Temperature 1  _(disabled)_
+- Device Temperature 2  _(disabled)_
+- Device Temperature 3  _(disabled)_
+- Device Temperature 4  _(disabled)_
+- Device Temperature 5  _(disabled)_
 - PV1 Power (energy:  _[Device Name]_ PV1  Energy)
 - PV2 Power (energy:  _[Device Name]_ PV2  Energy)
 - PV3 Power (energy:  _[Device Name]_ PV3  Energy)
@@ -1156,6 +1253,22 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - PV6 Power (energy:  _[Device Name]_ PV6  Energy)
 - PV7 Power (energy:  _[Device Name]_ PV7  Energy)
 - PV8 Power (energy:  _[Device Name]_ PV8  Energy)
+- PV1 Voltage  _(disabled)_
+- PV1 Current  _(disabled)_
+- PV2 Voltage  _(disabled)_
+- PV2 Current  _(disabled)_
+- PV3 Voltage  _(disabled)_
+- PV3 Current  _(disabled)_
+- PV4 Voltage  _(disabled)_
+- PV4 Current  _(disabled)_
+- PV5 Voltage  _(disabled)_
+- PV5 Current  _(disabled)_
+- PV6 Voltage  _(disabled)_
+- PV6 Current  _(disabled)_
+- PV7 Voltage  _(disabled)_
+- PV7 Current  _(disabled)_
+- PV8 Voltage  _(disabled)_
+- PV8 Current  _(disabled)_
 
 </p></details>
 
@@ -1931,6 +2044,39 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 *Sliders (numbers)*
 - Brightness
 - Max Power
+
+</p></details>
+
+<details><summary> SMART_GENERATOR <i>(sensors: 19, binary_sensors: 1, switches: 2)</i> </summary>
+<p>
+
+*Sensors*
+- AC Out Power
+- DC Out Power
+- Total Out Power
+- Generator Max Output Power
+- Fuel Level
+- Remaining Time
+- Motor Run Time
+- AC Out Volts
+- DC Out Voltage
+- AC Out Current
+- DC Out Current
+- Temperature
+- System Mode
+- Error Code
+- Generator Type  _(disabled)_
+- Unit Number  _(disabled)_
+- Firmware Version  _(disabled)_
+- Cell ID  _(disabled)_
+- Status
+
+*Binary sensors*
+- DC Output State
+
+*Switches*
+- Generator Motor
+- AC Enabled
 
 </p></details>
 
@@ -3618,7 +3764,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 
 </p></details>
 
-<details><summary> Smart Home Panel (API) <i>(sensors: 67, binary_sensors: 1, switches: 4, sliders: 4, selects: 11)</i> </summary>
+<details><summary> Smart Home Panel (API) <i>(sensors: 67, binary_sensors: 1, switches: 5, sliders: 6, selects: 11)</i> </summary>
 <p>
 
 *Sensors*
@@ -3696,6 +3842,7 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 *Switches*
 - EPS Mode
 - Scheduled Charge
+- Alternating Charge
 - Battery 1 Charge
 - Battery 2 Charge
 
@@ -3704,6 +3851,8 @@ grid, battery, CO2, savings) as sensors and long-term statistics, see
 - Max Charge Level
 - Scheduled Charge Battery Level
 - Scheduled Charge Power
+- Alternating Charge Battery Level
+- Alternating Charge Power
 
 *Selects*
 - Circuit 1 Mode _(read-only)_
