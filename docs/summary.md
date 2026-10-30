@@ -3693,6 +3693,31 @@
 
 </p></details>
 
+<details><summary> STREAM 5000 AC (API) <i>(sensors: 7, switches: 3, sliders: 1, selects: 1)</i> </summary>
+<p>
+
+*Sensors*
+- System Battery Level
+- System PV Power
+- System Battery Power
+- System Load Power
+- System Grid Power
+- On-Grid Power
+- Status
+
+*Switches*
+- Backup Reserve Enabled
+- Feed-in Limit
+- AC Socket
+
+*Sliders (numbers)*
+- Backup Reserve Level
+
+*Selects*
+- Operating Mode
+
+</p></details>
+
 <details><summary> Stream Microinverter (API) <i>(sensors: 14)</i> </summary>
 <p>
 

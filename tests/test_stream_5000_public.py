@@ -1,11 +1,6 @@
-"""STREAM 5000 (ES21) on the public API.
+"""STREAM 5000 (ES21) and STREAM 5000 AC (ES22) on the public API.
 
 Payloads are the examples from EcoFlow's "STREAM 5000 Series" document (2026-10-29).
-
-ES22 stays out of device_by_sn_prefix on purpose. The document names "STREAM 5000
-AC" as supported, but every example is an ES21 and the open API was still reported
-to refuse ES22 with error 1006 (MichelFR/ha-ecoflow-iot#19; #27 on 2026-10-30 has
-ES22 still unsupported there). Add it once someone has seen data for one.
 """
 
 import asyncio
@@ -14,12 +9,14 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.ecoflow_cloud.api.commands import evaluate_set_reply
 from custom_components.ecoflow_cloud.device_data import DeviceData, DeviceOptions
 from custom_components.ecoflow_cloud.devices.internal.stream_ac_5000 import StreamAC5000
 from custom_components.ecoflow_cloud.devices.public.stream_5000 import Stream5000, flatten_quota
 from custom_components.ecoflow_cloud.devices.registry import device_by_product, devices
+from custom_components.ecoflow_cloud.sensor import StatusSensorEntity
 from tests.stream_fakes import ACCOUNT, FakeClient
 
 SN = "ES21ZE1B2J6H0060"
@@ -91,6 +88,7 @@ def published(client: FakeClient) -> tuple[str, dict]:
 
 def test_registered_next_to_the_private_device():
     assert device_by_product["STREAM 5000"] is Stream5000
+    assert device_by_product["STREAM 5000 AC"] is Stream5000
     assert devices["STREAM_5000"] is StreamAC5000
 
 
@@ -239,6 +237,34 @@ def test_system_commands_go_to_the_main_sn_and_the_socket_stays():
     assert sent["sn"] == SN
 
 
+def test_emergency_stop_is_readable_but_never_sent():
+    client = Client()
+    device = make_device(client)
+    device.data.params.update(HTTP_QUOTA)
+    select = entity(device, client, "workMode")
+
+    select._update_value("SELF_CONSUMPTION")
+    assert "Emergency stop" not in select.options
+    assert "EMERGENCY_STOP" not in select.options_dict().values()
+
+    select._update_value("EMERGENCY_STOP")
+    assert select.current_option == "Emergency stop"
+    assert "Emergency stop" in select.options
+
+    with pytest.raises(ServiceValidationError):
+        select.select_option("Emergency stop")
+    assert client.mqtt_client.published == []  # type: ignore[attr-defined]
+
+    select.select_option("Self-consumption")
+    assert published(client)[1]["params"] == {"workMode": "SELF_CONSUMPTION"}
+
+
+def test_status_sensor_reconnects_on_stale_data():
+    client = Client()
+    status = next(s for s in make_device(client).sensors(client) if isinstance(s, StatusSensorEntity))
+    assert status._reconnect_when_stale is True
+
+
 def test_set_reply_cmd_ok():
     assert evaluate_set_reply({"data": {"workMode": "AI_MODE", "cmdOk": True, "actionId": 25}, "id": 123}) is None
     assert evaluate_set_reply({"data": {"workMode": "AI_MODE", "cmdOk": False}, "id": 123}) == "cmdOk is false"
@@ -280,11 +306,13 @@ def test_report_after_the_command_survives_a_rejection():
         ({"sn": SN, "online": 1, "productName": "STREAM 5000"}, "STREAM 5000"),
         ({"sn": SN, "online": 1, "productName": "Stream 5000 Series"}, "STREAM 5000"),
         ({"sn": SN, "online": 1}, "STREAM 5000"),
-        ({"sn": "ES22ZE1B2J6H0060", "online": 1, "productName": "STREAM AC 5000"}, "STREAM AC 5000"),
+        ({"sn": "ES22ZE1B2J6H0060", "online": 1, "productName": "STREAM AC 5000"}, "STREAM 5000 AC"),
+        # without the prefix this name would match the key "Stream AC", another device class
+        ({"sn": "ES22ZE1B2J6H0060", "online": 1, "deviceName": "Stream AC 5000"}, "STREAM 5000 AC"),
         ({"sn": "BK11ZE1B2J6H0060", "online": 1, "productName": "Stream Ultra"}, "Stream Ultra"),
     ],
 )
-def test_device_list_maps_es21_and_only_es21(entry, expected):
+def test_device_list_maps_the_series_by_serial_prefix(entry, expected):
     client = Client()
     client.responses["/device/list"] = {"code": "0", "message": "Success", "data": [entry]}
 

@@ -1,4 +1,4 @@
-"""STREAM 5000 (SN prefix ES21) on the public developer API.
+"""STREAM 5000 (SN prefix ES21) and STREAM 5000 AC (ES22) on the public developer API.
 
 Implemented from EcoFlow's "STREAM 5000 Series" document (published 2026-10-29).
 It exposes 11 system-level fields; the private-API device in
@@ -12,6 +12,7 @@ from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.ecoflow_cloud.api import EcoflowApiClient
 from custom_components.ecoflow_cloud.api.commands import MainSnCache, stream_command_target_sn
@@ -22,7 +23,6 @@ from custom_components.ecoflow_cloud.number import LevelEntity
 from custom_components.ecoflow_cloud.select import DictSelectEntity
 from custom_components.ecoflow_cloud.sensor import (
     LevelSensorEntity,
-    QuotaStatusSensorEntity,
     StatusSensorEntity,
     WattsSensorEntity,
 )
@@ -52,6 +52,30 @@ def flatten_quota(payload: dict[str, Any]) -> dict[str, Any]:
     for key, value in body.items():
         add(key, value)
     return flat
+
+
+class WorkModeSelectEntity(DictSelectEntity):
+    """Shows every documented mode but cannot start a read-only one.
+
+    HA only displays a current option that is in the list, so a read-only mode
+    is listed while the device is in it, and refused if selected.
+    """
+
+    def options_dict(self) -> dict[str, Any]:
+        return {k: v for k, v in self._options_dict.items() if k not in const.STREAM_5000_WORK_MODE_READ_ONLY}
+
+    @property
+    def options(self) -> list[str]:
+        return [
+            option
+            for option in self._options
+            if option not in const.STREAM_5000_WORK_MODE_READ_ONLY or option == self.current_option
+        ]
+
+    def select_option(self, option: str) -> None:
+        if option in const.STREAM_5000_WORK_MODE_READ_ONLY:
+            raise ServiceValidationError(f"{option} cannot be selected from Home Assistant")
+        super().select_option(option)
 
 
 class Stream5000(BaseDevice):
@@ -148,7 +172,7 @@ class Stream5000(BaseDevice):
 
     def selects(self, client: EcoflowApiClient) -> list[SelectEntity]:
         return [
-            DictSelectEntity(
+            WorkModeSelectEntity(
                 client,
                 self,
                 "workMode",
@@ -165,6 +189,6 @@ class Stream5000(BaseDevice):
         return {"params": flatten_quota(res), "raw_data": res}
 
     def _status_sensor(self, client: EcoflowApiClient) -> StatusSensorEntity:
-        # No reconnect_when_stale: how often this model reports on the public API
-        # is unknown, and a reconnect would interrupt every device of the account.
-        return QuotaStatusSensorEntity(client, self)
+        # Same as StreamAC. How often this series reports on the public API has not
+        # been seen yet; a long quiet phase would reconnect the account's MQTT session.
+        return StatusSensorEntity(client, self, reconnect_when_stale=True)
