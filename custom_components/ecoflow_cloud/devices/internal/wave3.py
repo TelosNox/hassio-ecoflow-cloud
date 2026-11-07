@@ -41,6 +41,10 @@ from .proto import wave3_pb2
 
 _LOGGER = logging.getLogger(__name__)
 
+# HA replaced the climate temperature members with native_* ones
+# (old names break in 2027.11); hacs.json still allows older HA.
+_HA_HAS_NATIVE_CLIMATE_TEMPERATURE = hasattr(ClimateEntity, "native_current_temperature")
+
 # --- SNIFFER CONFIGURATION ---
 ENABLE_SNIFFER = False
 SNIFFER_LOG_FILE = os.path.join(os.path.dirname(__file__), "wave3_sniffer.log")
@@ -306,7 +310,7 @@ class Wave3(BaseInternalDevice):
 class Wave3ClimateEntity(ClimateEntity):
     _attr_has_entity_name = True
     _attr_name = "Climate"
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_should_poll = True
 
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.COOL, HVACMode.HEAT, HVACMode.FAN_ONLY, HVACMode.DRY, HVACMode.HEAT_COOL]
@@ -367,22 +371,31 @@ class Wave3ClimateEntity(ClimateEntity):
         return features
 
     @property
-    def current_temperature(self) -> Optional[float]:
+    def native_current_temperature(self) -> Optional[float]:
         return self._params().get("temp_ambient")
 
     @property
-    def target_temperature(self) -> Optional[float]:
+    def native_target_temperature(self) -> Optional[float]:
         if self.hvac_mode in (HVACMode.DRY, HVACMode.FAN_ONLY, HVACMode.HEAT_COOL):
             return None
         return self._params().get("current_temp_set", 22.0)
 
     @property
-    def target_temperature_high(self) -> Optional[float]:
+    def native_target_temperature_high(self) -> Optional[float]:
         return self._params().get("current_temp_upper", 24.0)
 
     @property
-    def target_temperature_low(self) -> Optional[float]:
+    def native_target_temperature_low(self) -> Optional[float]:
         return self._params().get("current_temp_lower", 20.0)
+
+    if not _HA_HAS_NATIVE_CLIMATE_TEMPERATURE:
+        # HA before the native climate temperature API reads only these names.
+        # Defined only there, so newer HA does not log them as deprecated.
+        _attr_temperature_unit = UnitOfTemperature.CELSIUS
+        current_temperature = native_current_temperature
+        target_temperature = native_target_temperature
+        target_temperature_high = native_target_temperature_high
+        target_temperature_low = native_target_temperature_low
 
     @property
     def current_humidity(self) -> Optional[float]:
